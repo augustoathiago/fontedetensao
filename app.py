@@ -71,11 +71,11 @@ def fmt_voltage(V):
 # ============================
 # Faixas (atualizadas)
 # ============================
-EPS_MIN, EPS_MAX = 10.0, 30.0          # (5) epsilon mínimo 10 V + topo coerente com eixo 30V
+EPS_MIN, EPS_MAX = 10.0, 20.0          # epsilon mínimo 10 V e máximo 30 V
 RINT_MIN, RINT_MAX = 0.5, 10.0
-RLOAD_MIN, RLOAD_MAX = 1.0, 2000.0     # amplia para permitir correntes em mA como na sua imagem
+RLOAD_MIN, RLOAD_MAX = 1.0, 2000.0
 
-# Para manter a curva característica com eixo x fixo (não mudando a escala horizontal)
+# Para manter a curva característica com eixo x fixo (sem mudar escala horizontal)
 I_AXIS_MAX_GLOBAL = EPS_MAX / RINT_MIN  # 30/0.5 = 60 A
 
 # ============================
@@ -158,14 +158,12 @@ V_opt = epsilon / 2.0
 st.divider()
 
 # ============================
-# (1) Circuito parecido com a imagem + drag-to-scroll
+# Circuito parecido com a imagem + drag-to-scroll
 # ============================
 st.header("Circuito")
 st.markdown('<div class="hscroll-hint">💡 Dica: no celular, arraste a figura para os lados.</div>',
             unsafe_allow_html=True)
 
-# Estilo inspirado na imagem enviada (fundo escuro + fios verdes neon + painéis)
-# Inclui JS para drag-to-scroll (mouse e touch via pointer events)
 svg_html = f"""
 <div id="circuit-scroll" class="hscroll grabbable">
 <svg width="1500" height="420" viewBox="0 0 1500 420" xmlns="http://www.w3.org/2000/svg">
@@ -197,7 +195,6 @@ svg_html = f"""
       .wire {{ stroke:#28d17c; stroke-width:12; fill:none; filter:url(#softGlow); stroke-linecap:round; stroke-linejoin:round; }}
       .textW {{ font-family: Arial, Helvetica, sans-serif; fill:#e8eefc; }}
       .label {{ font-size:28px; font-weight:600; }}
-      .small {{ font-size:22px; opacity:0.95; }}
       .panelText {{ font-size:26px; font-weight:600; }}
       .panelText2 {{ font-size:24px; }}
       .panel {{ fill: rgba(10,16,30,0.55); stroke: rgba(255,255,255,0.18); stroke-width:2; }}
@@ -210,83 +207,43 @@ svg_html = f"""
     </style>
   </defs>
 
-  <!-- Fundo -->
   <rect class="bg" x="0" y="0" width="1500" height="420" rx="18"/>
 
-  <!-- Texto: Resistência interna -->
   <text class="textW label" x="55" y="95">Resistência interna = {fmt(r_int,2)} Ω</text>
 
-  <!-- Fonte (esquerda) -->
   <rect class="srcBox" x="55" y="145" width="170" height="210" rx="28"/>
   <text class="textW panelText" x="140" y="195" text-anchor="middle">FONTE</text>
   <rect class="srcInner" x="85" y="220" width="110" height="70" rx="18"/>
-  <text class="textW panelText2" x="140" y="265" text-anchor="middle" fill="#5eead4"> {fmt_voltage(epsilon)} </text>
+  <text class="textW panelText2" x="140" y="265" text-anchor="middle" fill="#5eead4">{fmt_voltage(epsilon)}</text>
 
-  <!-- Painel do voltímetro (topo) -->
   <text class="textW label" x="770" y="65" text-anchor="middle">Voltímetro</text>
   <rect class="panelPurple" x="640" y="80" width="260" height="74" rx="16" filter="url(#panelGlowPurple)"/>
   <text class="textW panelText2" x="770" y="128" text-anchor="middle">
     V<tspan dy="7" font-size="18">R</tspan><tspan dy="-7"></tspan> = {fmt_voltage(V)}
   </text>
 
-  <!-- Reostato (centro) -->
   <rect class="panel" x="620" y="175" width="320" height="165" rx="18"/>
   <text class="textW panelText" x="780" y="220" text-anchor="middle">REOSTATO (R = {fmt(R,0)} Ω)</text>
   <rect class="panelYellow" x="650" y="245" width="260" height="80" rx="18" filter="url(#panelGlowYellow)"/>
 
-  <!-- Amperímetro (círculo) -->
   <circle class="circleA" cx="1125" cy="255" r="38" filter="url(#panelGlowGreen)"/>
   <text class="textW panelText" x="1125" y="266" text-anchor="middle">A</text>
 
-  <!-- Painel do amperímetro (direita) -->
   <text class="textW label" x="1320" y="205" text-anchor="middle">Amperímetro</text>
   <rect class="panelGreen" x="1235" y="220" width="250" height="74" rx="16" filter="url(#panelGlowGreen)"/>
   <text class="textW panelText2" x="1360" y="268" text-anchor="middle" fill="#86efac">
     I = {fmt_current(I)}
   </text>
 
-  <!-- Fios (retângulo com “sobe/desce”) -->
-  <!-- segmento superior: sai da fonte até reostato, passando pelo A -->
-  <path class="wire" d="
-    M 225 250
-    L 620 250
-    L 940 250
-    L 1087 250
-    L 150 250
-  " opacity="0"/>
-
-  <!-- fio superior real -->
-  <path class="wire" d="
-    M 225 250
-    L 620 250
-    L 940 250
-    L 1087 250
-    L 1470 250
-  "/>
-
-  <!-- fio inferior -->
-  <path class="wire" d="
-    M 140 355
-    L 1470 355
-  "/>
-
-  <!-- conexão vertical na esquerda (fonte) -->
-  <path class="wire" d="
-    M 140 300
-    L 140 355
-  "/>
-
-  <!-- conexão vertical na direita -->
-  <path class="wire" d="
-    M 1470 250
-    L 1470 355
-  "/>
-
+  <path class="wire" d="M 225 250 L 1470 250"/>
+  <path class="wire" d="M 140 355 L 1470 355"/>
+  <path class="wire" d="M 140 300 L 140 355"/>
+  <path class="wire" d="M 1470 250 L 1470 355"/>
 </svg>
 </div>
 
 <script>
-(function() {{
+(function() {
   const el = document.getElementById("circuit-scroll");
   if (!el) return;
 
@@ -294,33 +251,33 @@ svg_html = f"""
   let startX = 0;
   let scrollLeft = 0;
 
-  const down = (e) => {{
+  const down = (e) => {
     isDown = true;
     el.classList.add("grabbing");
     el.classList.remove("grabbable");
     startX = e.clientX;
     scrollLeft = el.scrollLeft;
-    el.setPointerCapture(e.pointerId);
-  }};
+    try { el.setPointerCapture(e.pointerId); } catch(err) {}
+  };
 
-  const move = (e) => {{
+  const move = (e) => {
     if (!isDown) return;
     const dx = e.clientX - startX;
     el.scrollLeft = scrollLeft - dx;
-  }};
+  };
 
-  const up = (e) => {{
+  const up = (e) => {
     isDown = false;
     el.classList.remove("grabbing");
     el.classList.add("grabbable");
-    try {{ el.releasePointerCapture(e.pointerId); }} catch(err) {{}}
-  }};
+    try { el.releasePointerCapture(e.pointerId); } catch(err) {}
+  };
 
   el.addEventListener("pointerdown", down);
   el.addEventListener("pointermove", move);
   el.addEventListener("pointerup", up);
   el.addEventListener("pointercancel", up);
-}})();
+})();
 </script>
 """
 components.html(svg_html, height=460, scrolling=False)
@@ -328,7 +285,7 @@ components.html(svg_html, height=460, scrolling=False)
 st.divider()
 
 # ============================
-# Gráfico: Curva característica (2)(3)(4)
+# Gráfico: Curva característica
 # ============================
 st.header("Gráfico")
 st.subheader("Curva característica da fonte")
@@ -345,7 +302,7 @@ fig1.add_trace(go.Scatter(
     line=dict(width=3)
 ))
 
-# ponto de operação
+# Ponto de operação
 fig1.add_trace(go.Scatter(
     x=[I], y=[V],
     mode="markers+text",
@@ -355,7 +312,7 @@ fig1.add_trace(go.Scatter(
     textposition="middle right"
 ))
 
-# anotação do epsilon (2)
+# Indicar epsilon no gráfico
 fig1.add_annotation(
     x=0, y=epsilon,
     xref="x", yref="y",
@@ -369,7 +326,7 @@ fig1.add_annotation(
     borderwidth=1
 )
 
-# marcador do curto (em (icc,0))
+# Ponto de curto-circuito (icc, 0)
 fig1.add_trace(go.Scatter(
     x=[icc], y=[0],
     mode="markers",
@@ -377,10 +334,11 @@ fig1.add_trace(go.Scatter(
     marker=dict(color="#333", size=9)
 ))
 
-# icc abaixo do eixo x (4)
+# ✅ CORREÇÃO AQUI: icc abaixo do eixo x (yref='paper') com y APENAS UMA VEZ
 fig1.add_annotation(
-    x=icc, y=0,
-    xref="x", yref="paper",
+    x=icc,
+    xref="x",
+    yref="paper",
     y=-0.18,
     text=f"icc = {fmt(icc,3)} A",
     showarrow=False,
@@ -390,9 +348,8 @@ fig1.add_annotation(
     borderwidth=1
 )
 
-# (3) eixo vertical até 30 V
 fig1.update_layout(
-    margin=dict(l=10, r=10, t=10, b=60),
+    margin=dict(l=10, r=10, t=10, b=80),  # b maior para aparecer a anotação abaixo
     height=430,
     xaxis=dict(
         title="Corrente no circuito I (A)",
@@ -408,17 +365,14 @@ fig1.update_layout(
 )
 
 st.plotly_chart(fig1, width="stretch", theme="streamlit")
-
 st.caption("a resistência do reostato do circuito foi alterada para obtermos diferentes valores de tensão e corrente do circuito")
 
-st.write(
-    f"**Para o valor atual de R:**  I = **{fmt(I,3)} A** e V = **{fmt(V,3)} V**."
-)
+st.write(f"**Para o valor atual de R:**  I = **{fmt(I,3)} A** e V = **{fmt(V,3)} V**.")
 
 st.divider()
 
 # ============================
-# Potência (6): eixos auto-ajustáveis
+# Potência (eixos auto-ajustáveis)
 # ============================
 st.header("Potência")
 
@@ -431,8 +385,6 @@ I_pow = np.linspace(0, icc, 300)
 P_curve = epsilon * I_pow - r_int * I_pow**2
 
 P_max = float(np.max(P_curve)) if len(P_curve) else 0.0
-
-# ranges automáticos (boa visualização)
 xmax = max(icc * 1.05, 0.5)
 ymax = max(P_max * 1.20, 1.0)
 
@@ -454,7 +406,6 @@ fig2.add_trace(go.Scatter(
     textposition="middle right"
 ))
 
-# ponto de máximo
 fig2.add_trace(go.Scatter(
     x=[I_opt], y=[epsilon * I_opt - r_int * I_opt**2],
     mode="markers+text",
@@ -482,7 +433,7 @@ st.write(
 st.divider()
 
 # ============================
-# Rendimento (7): incluir equações de Pútil, Pg, Pd
+# Rendimento (equações explícitas)
 # ============================
 st.header("Rendimento")
 
