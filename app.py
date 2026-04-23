@@ -60,7 +60,7 @@ def fmt(x, nd=3):
     return s.replace(".", ",")
 
 def fmt_current(I_amp):
-    """Mostra corrente em A ou mA para o painel do amperímetro (estilo da figura)."""
+    """Mostra corrente em A ou mA para o painel do amperímetro."""
     if abs(I_amp) < 0.1:
         return f"{fmt(I_amp*1000,2)} mA"
     return f"{fmt(I_amp,3)} A"
@@ -71,12 +71,12 @@ def fmt_voltage(V):
 # ============================
 # Faixas (atualizadas)
 # ============================
-EPS_MIN, EPS_MAX = 10.0, 30.0          # epsilon mínimo 10 V e máximo 30 V
+EPS_MIN, EPS_MAX = 10.0, 30.0
 RINT_MIN, RINT_MAX = 0.5, 10.0
 RLOAD_MIN, RLOAD_MAX = 1.0, 2000.0
 
-# Para manter a curva característica com eixo x fixo (sem mudar escala horizontal)
-I_AXIS_MAX_GLOBAL = EPS_MAX / RINT_MIN  # 30/0.5 = 60 A
+# Curva característica: eixo x fixo
+I_AXIS_MAX_GLOBAL = EPS_MAX / RINT_MIN  # 60 A
 
 # ============================
 # Início: duas colunas
@@ -114,31 +114,13 @@ st.header("Parâmetros")
 c1, c2, c3 = st.columns(3)
 
 with c1:
-    epsilon = st.slider(
-        "ε (tensão na fonte) [V]",
-        min_value=float(EPS_MIN),
-        max_value=float(EPS_MAX),
-        value=12.0,
-        step=0.5
-    )
+    epsilon = st.slider("ε (tensão na fonte) [V]", float(EPS_MIN), float(EPS_MAX), 12.0, 0.5)
 
 with c2:
-    r_int = st.slider(
-        "r (resistência interna) [Ω]",
-        min_value=float(RINT_MIN),
-        max_value=float(RINT_MAX),
-        value=2.0,
-        step=0.1
-    )
+    r_int = st.slider("r (resistência interna) [Ω]", float(RINT_MIN), float(RINT_MAX), 2.0, 0.1)
 
 with c3:
-    R = st.slider(
-        "R (resistência do reostato / circuito) [Ω]",
-        min_value=float(RLOAD_MIN),
-        max_value=float(RLOAD_MAX),
-        value=1100.0,
-        step=1.0
-    )
+    R = st.slider("R (resistência do reostato / circuito) [Ω]", float(RLOAD_MIN), float(RLOAD_MAX), 1100.0, 1.0)
 
 # ============================
 # Cálculos
@@ -161,11 +143,9 @@ st.divider()
 # Circuito (estilo da imagem) + drag-to-scroll
 # ============================
 st.header("Circuito")
-st.markdown('<div class="hscroll-hint">💡 Dica: no celular, arraste a figura para os lados.</div>',
-            unsafe_allow_html=True)
+st.markdown('<div class="hscroll-hint">💡 Dica: no celular, arraste a figura para os lados.</div>', unsafe_allow_html=True)
 
-# IMPORTANTE: como é f-string, TODAS as chaves literais de CSS/JS devem ser {{ e }}
-# (senão o Python pode "quebrar" a string e o JS vira código Python -> SyntaxError)
+# ATENÇÃO: é f-string -> chaves literais do CSS/JS precisam ser {{ e }}
 svg_html = f"""
 <div id="circuit-scroll" class="hscroll grabbable">
 <svg width="1500" height="420" viewBox="0 0 1500 420" xmlns="http://www.w3.org/2000/svg">
@@ -296,13 +276,7 @@ I_line = np.linspace(0, icc, 250)
 V_line = epsilon - r_int * I_line
 
 fig1 = go.Figure()
-
-fig1.add_trace(go.Scatter(
-    x=I_line, y=V_line,
-    mode="lines",
-    name="V = ε - r·I",
-    line=dict(width=3)
-))
+fig1.add_trace(go.Scatter(x=I_line, y=V_line, mode="lines", name="V = ε - r·I", line=dict(width=3)))
 
 fig1.add_trace(go.Scatter(
     x=[I], y=[V],
@@ -313,61 +287,37 @@ fig1.add_trace(go.Scatter(
     textposition="middle right"
 ))
 
-# ε indicado
 fig1.add_annotation(
-    x=0, y=epsilon,
-    xref="x", yref="y",
+    x=0, y=epsilon, xref="x", yref="y",
     text=f"ε = {fmt(epsilon,2)} V",
-    showarrow=True,
-    arrowhead=2,
-    ax=60, ay=-30,
+    showarrow=True, arrowhead=2, ax=60, ay=-30,
     font=dict(size=13, color="#111"),
     bgcolor="rgba(255,255,255,0.85)",
-    bordercolor="rgba(0,0,0,0.15)",
-    borderwidth=1
+    bordercolor="rgba(0,0,0,0.15)", borderwidth=1
 )
 
-# ponto do curto
-fig1.add_trace(go.Scatter(
-    x=[icc], y=[0],
-    mode="markers",
-    name="Curto-circuito",
-    marker=dict(color="#333", size=9)
-))
+fig1.add_trace(go.Scatter(x=[icc], y=[0], mode="markers", name="Curto-circuito", marker=dict(color="#333", size=9)))
 
-# icc abaixo do eixo x (yref='paper')
 fig1.add_annotation(
-    x=icc,
-    xref="x",
-    yref="paper",
-    y=-0.18,
+    x=icc, xref="x",
+    yref="paper", y=-0.18,
     text=f"icc = {fmt(icc,3)} A",
     showarrow=False,
     font=dict(size=13, color="#222"),
     bgcolor="rgba(255,255,255,0.85)",
-    bordercolor="rgba(0,0,0,0.15)",
-    borderwidth=1
+    bordercolor="rgba(0,0,0,0.15)", borderwidth=1
 )
 
 fig1.update_layout(
     margin=dict(l=10, r=10, t=10, b=80),
     height=430,
-    xaxis=dict(
-        title="Corrente no circuito I (A)",
-        range=[0, float(I_AXIS_MAX_GLOBAL)],
-        fixedrange=True
-    ),
-    yaxis=dict(
-        title="Tensão no circuito V (V)",
-        range=[0, 30],
-        fixedrange=True
-    ),
+    xaxis=dict(title="Corrente no circuito I (A)", range=[0, float(I_AXIS_MAX_GLOBAL)], fixedrange=True),
+    yaxis=dict(title="Tensão no circuito V (V)", range=[0, 30], fixedrange=True),
     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0)
 )
 
 st.plotly_chart(fig1, width="stretch", theme="streamlit")
 st.caption("a resistência do reostato do circuito foi alterada para obtermos diferentes valores de tensão e corrente do circuito")
-
 st.write(f"**Para o valor atual de R:**  I = **{fmt(I,3)} A** e V = **{fmt(V,3)} V**.")
 
 st.divider()
@@ -376,7 +326,6 @@ st.divider()
 # Potência (eixos auto-ajustáveis)
 # ============================
 st.header("Potência")
-
 st.write("**Potência = energia por tempo (unidade Watts)**")
 st.write("**A partir da equação característica:**")
 st.latex(r"V\,I = \varepsilon\,I - r\,I^2")
@@ -390,14 +339,7 @@ xmax = max(icc * 1.05, 0.5)
 ymax = max(P_max * 1.20, 1.0)
 
 fig2 = go.Figure()
-
-fig2.add_trace(go.Scatter(
-    x=I_pow, y=P_curve,
-    mode="lines",
-    name="Pútil(I) = εI - rI²",
-    line=dict(width=3)
-))
-
+fig2.add_trace(go.Scatter(x=I_pow, y=P_curve, mode="lines", name="Pútil(I) = εI - rI²", line=dict(width=3)))
 fig2.add_trace(go.Scatter(
     x=[I], y=[P_util],
     mode="markers+text",
@@ -423,7 +365,6 @@ fig2.update_layout(
     yaxis=dict(title="Potência útil Pútil (W)", range=[0, ymax], fixedrange=True),
     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0)
 )
-
 st.plotly_chart(fig2, width="stretch", theme="streamlit")
 
 st.write(
@@ -434,11 +375,22 @@ st.write(
 st.divider()
 
 # ============================
-# Rendimento (equações explícitas)
+# Rendimento (CORRIGIDO: string inteira, sem quebrar)
 # ============================
 st.header("Rendimento")
-
 st.latex(r"P_{\mathrm{útil}} = V\,I")
 st.latex(r"P_g = \varepsilon\,I")
 st.latex(r"P_d = r\,I^2")
-st.latex(r"\eta = \dfrac{P_{\mathrm{ú
+
+# ✅ ESTA LINHA É A QUE ESTAVA "quebrada" (agora está inteira e fechada)
+st.latex(r"\eta = \dfrac{P_{\mathrm{útil}}}{P_g}")
+
+st.write(f"Para o valor atual de **R = {fmt(R,0)} Ω**:")
+st.write(
+    f"- **V = {fmt(V,3)} V**\n"
+    f"- **I = {fmt(I,3)} A**\n"
+    f"- **Pútil = V·I = {fmt(P_util,3)} W**\n"
+    f"- **Pg = ε·I = {fmt(Pg,3)} W**\n"
+    f"- **Pd = r·I² = {fmt(Pd,3)} W**"
+)
+st.metric("Rendimento η", f"{fmt(100*eta,2)} %")
