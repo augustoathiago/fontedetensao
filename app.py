@@ -71,7 +71,7 @@ def fmt_voltage(V):
 # ============================
 # Faixas (atualizadas)
 # ============================
-EPS_MIN, EPS_MAX = 10.0, 20.0          # epsilon mínimo 10 V e máximo 30 V
+EPS_MIN, EPS_MAX = 10.0, 30.0          # epsilon mínimo 10 V e máximo 30 V
 RINT_MIN, RINT_MAX = 0.5, 10.0
 RLOAD_MIN, RLOAD_MAX = 1.0, 2000.0
 
@@ -158,12 +158,14 @@ V_opt = epsilon / 2.0
 st.divider()
 
 # ============================
-# Circuito parecido com a imagem + drag-to-scroll
+# Circuito (estilo da imagem) + drag-to-scroll
 # ============================
 st.header("Circuito")
 st.markdown('<div class="hscroll-hint">💡 Dica: no celular, arraste a figura para os lados.</div>',
             unsafe_allow_html=True)
 
+# IMPORTANTE: como é f-string, TODAS as chaves literais de CSS/JS devem ser {{ e }}
+# (senão o Python pode "quebrar" a string e o JS vira código Python -> SyntaxError)
 svg_html = f"""
 <div id="circuit-scroll" class="hscroll grabbable">
 <svg width="1500" height="420" viewBox="0 0 1500 420" xmlns="http://www.w3.org/2000/svg">
@@ -243,7 +245,7 @@ svg_html = f"""
 </div>
 
 <script>
-(function() {
+(function() {{
   const el = document.getElementById("circuit-scroll");
   if (!el) return;
 
@@ -251,33 +253,33 @@ svg_html = f"""
   let startX = 0;
   let scrollLeft = 0;
 
-  const down = (e) => {
+  const down = (e) => {{
     isDown = true;
     el.classList.add("grabbing");
     el.classList.remove("grabbable");
     startX = e.clientX;
     scrollLeft = el.scrollLeft;
-    try { el.setPointerCapture(e.pointerId); } catch(err) {}
-  };
+    try {{ el.setPointerCapture(e.pointerId); }} catch(err) {{}}
+  }};
 
-  const move = (e) => {
+  const move = (e) => {{
     if (!isDown) return;
     const dx = e.clientX - startX;
     el.scrollLeft = scrollLeft - dx;
-  };
+  }};
 
-  const up = (e) => {
+  const up = (e) => {{
     isDown = false;
     el.classList.remove("grabbing");
     el.classList.add("grabbable");
-    try { el.releasePointerCapture(e.pointerId); } catch(err) {}
-  };
+    try {{ el.releasePointerCapture(e.pointerId); }} catch(err) {{}}
+  }};
 
   el.addEventListener("pointerdown", down);
   el.addEventListener("pointermove", move);
   el.addEventListener("pointerup", up);
   el.addEventListener("pointercancel", up);
-})();
+}})();
 </script>
 """
 components.html(svg_html, height=460, scrolling=False)
@@ -302,7 +304,6 @@ fig1.add_trace(go.Scatter(
     line=dict(width=3)
 ))
 
-# Ponto de operação
 fig1.add_trace(go.Scatter(
     x=[I], y=[V],
     mode="markers+text",
@@ -312,7 +313,7 @@ fig1.add_trace(go.Scatter(
     textposition="middle right"
 ))
 
-# Indicar epsilon no gráfico
+# ε indicado
 fig1.add_annotation(
     x=0, y=epsilon,
     xref="x", yref="y",
@@ -326,7 +327,7 @@ fig1.add_annotation(
     borderwidth=1
 )
 
-# Ponto de curto-circuito (icc, 0)
+# ponto do curto
 fig1.add_trace(go.Scatter(
     x=[icc], y=[0],
     mode="markers",
@@ -334,7 +335,7 @@ fig1.add_trace(go.Scatter(
     marker=dict(color="#333", size=9)
 ))
 
-# ✅ CORREÇÃO AQUI: icc abaixo do eixo x (yref='paper') com y APENAS UMA VEZ
+# icc abaixo do eixo x (yref='paper')
 fig1.add_annotation(
     x=icc,
     xref="x",
@@ -349,7 +350,7 @@ fig1.add_annotation(
 )
 
 fig1.update_layout(
-    margin=dict(l=10, r=10, t=10, b=80),  # b maior para aparecer a anotação abaixo
+    margin=dict(l=10, r=10, t=10, b=80),
     height=430,
     xaxis=dict(
         title="Corrente no circuito I (A)",
@@ -440,15 +441,4 @@ st.header("Rendimento")
 st.latex(r"P_{\mathrm{útil}} = V\,I")
 st.latex(r"P_g = \varepsilon\,I")
 st.latex(r"P_d = r\,I^2")
-st.latex(r"\eta = \dfrac{P_{\mathrm{útil}}}{P_g}")
-
-st.write(f"Para o valor atual de **R = {fmt(R,0)} Ω**:")
-st.write(
-    f"- **V = {fmt(V,3)} V**\n"
-    f"- **I = {fmt(I,3)} A**\n"
-    f"- **Pútil = V·I = {fmt(P_util,3)} W**\n"
-    f"- **Pg = ε·I = {fmt(Pg,3)} W**\n"
-    f"- **Pd = r·I² = {fmt(Pd,3)} W**"
-)
-
-st.metric("Rendimento η", f"{fmt(100*eta,2)} %")
+st.latex(r"\eta = \dfrac{P_{\mathrm{ú
