@@ -3,86 +3,84 @@ import streamlit as st
 import streamlit.components.v1 as components
 import plotly.graph_objects as go
 
-# ----------------------------
+# ============================
 # Configuração da página
-# ----------------------------
+# ============================
 st.set_page_config(
     page_title="Simulador Fonte de Tensão Física II",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# CSS: melhorar leitura no celular + containers com scroll lateral (touch)
+# ============================
+# CSS (mobile-friendly + drag-to-scroll)
+# ============================
 st.markdown("""
 <style>
-/* Deixa a página mais "mobile-friendly" */
 .block-container { padding-top: 1.0rem; padding-bottom: 2rem; }
 
-/* Títulos um pouco mais compactos em telas pequenas */
 @media (max-width: 600px) {
   h1 { font-size: 1.45rem !important; }
   h2 { font-size: 1.15rem !important; }
   h3 { font-size: 1.02rem !important; }
 }
 
-/* Container com scroll horizontal e suporte a "arrastar com o dedo" */
+/* Container com scroll horizontal */
 .hscroll {
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
-  border: 1px solid rgba(49,51,63,0.2);
-  border-radius: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(49,51,63,0.25);
+  background: #0b1220;
   padding: 10px;
-  background: white;
 }
 
-/* Dica visual */
+/* Dica */
 .hscroll-hint {
   font-size: 0.9rem;
   opacity: 0.75;
   margin: 0.1rem 0 0.6rem 0;
 }
+
+/* Cursor para drag */
+.hscroll.grabbable { cursor: grab; }
+.hscroll.grabbing  { cursor: grabbing; }
 </style>
 """, unsafe_allow_html=True)
 
-# ----------------------------
+# ============================
 # Helpers de formatação (pt-BR)
-# ----------------------------
+# ============================
 def fmt(x, nd=3):
-    """Formata número com vírgula decimal (padrão BR) e sem notação estranha."""
     try:
         s = f"{x:.{nd}f}"
     except Exception:
         s = str(x)
     return s.replace(".", ",")
 
-def fmt_int(x):
-    try:
-        return str(int(round(x)))
-    except Exception:
-        return str(x)
+def fmt_current(I_amp):
+    """Mostra corrente em A ou mA para o painel do amperímetro (estilo da figura)."""
+    if abs(I_amp) < 0.1:
+        return f"{fmt(I_amp*1000,2)} mA"
+    return f"{fmt(I_amp,3)} A"
 
-# ----------------------------
-# Faixas realistas (você pode ajustar)
-# Mantemos também valores "globais" para FIXAR escala dos eixos
-# ----------------------------
-EPS_MIN, EPS_MAX = 1.0, 24.0          # V (baterias/fonte de bancada baixa tensão)
-RINT_MIN, RINT_MAX = 0.5, 10.0        # ohm (resistência interna didática)
-RLOAD_MIN, RLOAD_MAX = 0.5, 200.0     # ohm (reostato/carga)
+def fmt_voltage(V):
+    return f"{fmt(V,2)} V"
 
-# Eixos fixos:
-I_AXIS_MAX = EPS_MAX / RINT_MIN       # maior corrente de curto possível na faixa
-V_AXIS_MAX = EPS_MAX
-P_AXIS_MAX = (EPS_MAX**2) / (4*RINT_MIN)  # potência útil máxima teórica na faixa
+# ============================
+# Faixas (atualizadas)
+# ============================
+EPS_MIN, EPS_MAX = 10.0, 30.0          # (5) epsilon mínimo 10 V + topo coerente com eixo 30V
+RINT_MIN, RINT_MAX = 0.5, 10.0
+RLOAD_MIN, RLOAD_MAX = 1.0, 2000.0     # amplia para permitir correntes em mA como na sua imagem
 
-# Margens “bonitinhas”
-I_AXIS_MAX_PAD = float(np.ceil(I_AXIS_MAX / 5) * 5)   # arredonda para cima múltiplo de 5
-V_AXIS_MAX_PAD = float(np.ceil(V_AXIS_MAX / 2) * 2)   # múltiplo de 2
-P_AXIS_MAX_PAD = float(np.ceil(P_AXIS_MAX / 50) * 50) # múltiplo de 50
+# Para manter a curva característica com eixo x fixo (não mudando a escala horizontal)
+I_AXIS_MAX_GLOBAL = EPS_MAX / RINT_MIN  # 30/0.5 = 60 A
 
-# ----------------------------
-# Início: duas colunas (logo + título/descrição)
-# ----------------------------
+# ============================
+# Início: duas colunas
+# ============================
 col_logo, col_title = st.columns([1, 3], vertical_alignment="center")
 
 with col_logo:
@@ -97,9 +95,9 @@ with col_title:
 
 st.divider()
 
-# ----------------------------
+# ============================
 # Seção: Equação característica
-# ----------------------------
+# ============================
 st.header("Equação característica")
 st.latex(r"V = \varepsilon - r\,I")
 st.write(
@@ -109,12 +107,10 @@ st.write(
 
 st.divider()
 
-# ----------------------------
-# Seção: Parâmetros (sliders)
-# ----------------------------
+# ============================
+# Seção: Parâmetros
+# ============================
 st.header("Parâmetros")
-
-# Em telas grandes, 3 colunas; no celular, o Streamlit empilha automaticamente
 c1, c2, c3 = st.columns(3)
 
 with c1:
@@ -123,8 +119,7 @@ with c1:
         min_value=float(EPS_MIN),
         max_value=float(EPS_MAX),
         value=12.0,
-        step=0.5,
-        help="Faixa típica de fonte de bancada/baterias em laboratório didático."
+        step=0.5
     )
 
 with c2:
@@ -133,129 +128,212 @@ with c2:
         min_value=float(RINT_MIN),
         max_value=float(RINT_MAX),
         value=2.0,
-        step=0.1,
-        help="Em fontes reais r é pequeno, mas aqui usamos uma faixa didática para enxergar efeitos."
+        step=0.1
     )
 
 with c3:
     R = st.slider(
-        "R (resistência do circuito / reostato) [Ω]",
+        "R (resistência do reostato / circuito) [Ω]",
         min_value=float(RLOAD_MIN),
         max_value=float(RLOAD_MAX),
-        value=20.0,
-        step=0.5,
-        help="Representa a carga externa (reostato) usada para variar a corrente no circuito."
+        value=1100.0,
+        step=1.0
     )
 
-# ----------------------------
-# Cálculos principais
-# ----------------------------
-I = epsilon / (r_int + R)                 # A
-V = epsilon - r_int * I                   # V (equivale a I*R)
-icc = epsilon / r_int                     # A
-Pg = epsilon * I                          # W (potência geradora)
-Pd = r_int * I**2                         # W (potência dissipada internamente)
-P_util = V * I                            # W (potência útil na carga)
-eta = (P_util / Pg) if Pg > 0 else 0.0    # rendimento
+# ============================
+# Cálculos
+# ============================
+I = epsilon / (r_int + R)
+V = epsilon - r_int * I
+icc = epsilon / r_int
 
-# Valores do ponto de máxima potência útil
+Pg = epsilon * I
+Pd = r_int * I**2
+P_util = V * I
+eta = (P_util / Pg) if Pg > 0 else 0.0
+
 I_opt = icc / 2.0
 V_opt = epsilon / 2.0
 
-# ----------------------------
-# Seção: Circuito (SVG grande + scroll horizontal / arrastar)
-# ----------------------------
-st.header("Circuito")
+st.divider()
 
+# ============================
+# (1) Circuito parecido com a imagem + drag-to-scroll
+# ============================
+st.header("Circuito")
 st.markdown('<div class="hscroll-hint">💡 Dica: no celular, arraste a figura para os lados.</div>',
             unsafe_allow_html=True)
 
-# SVG do circuito: fonte com r interno, reostato R, voltímetro e amperímetro
-# (desenhado maior para garantir legibilidade; container permite scroll horizontal)
-svg = f"""
-<div class="hscroll">
-<svg width="980" height="280" viewBox="0 0 980 280" xmlns="http://www.w3.org/2000/svg">
+# Estilo inspirado na imagem enviada (fundo escuro + fios verdes neon + painéis)
+# Inclui JS para drag-to-scroll (mouse e touch via pointer events)
+svg_html = f"""
+<div id="circuit-scroll" class="hscroll grabbable">
+<svg width="1500" height="420" viewBox="0 0 1500 420" xmlns="http://www.w3.org/2000/svg">
   <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#050a16"/>
+      <stop offset="100%" stop-color="#0b1630"/>
+    </linearGradient>
+
+    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#28d17c" flood-opacity="0.45"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#28d17c" flood-opacity="0.25"/>
+    </filter>
+
+    <filter id="panelGlowPurple" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#8b5cf6" flood-opacity="0.35"/>
+    </filter>
+
+    <filter id="panelGlowGreen" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#22c55e" flood-opacity="0.30"/>
+    </filter>
+
+    <filter id="panelGlowYellow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#f7b500" flood-opacity="0.30"/>
+    </filter>
+
     <style>
-      .w {{ stroke:#111; stroke-width:3; fill:none; }}
-      .t {{ font-family: Arial, Helvetica, sans-serif; font-size:18px; fill:#111; }}
-      .ts {{ font-family: Arial, Helvetica, sans-serif; font-size:16px; fill:#111; }}
-      .box {{ fill:#fff; stroke:#111; stroke-width:2; }}
-      .meter {{ fill:#fff; stroke:#111; stroke-width:2; }}
+      .bg {{ fill: url(#bg); }}
+      .wire {{ stroke:#28d17c; stroke-width:12; fill:none; filter:url(#softGlow); stroke-linecap:round; stroke-linejoin:round; }}
+      .textW {{ font-family: Arial, Helvetica, sans-serif; fill:#e8eefc; }}
+      .label {{ font-size:28px; font-weight:600; }}
+      .small {{ font-size:22px; opacity:0.95; }}
+      .panelText {{ font-size:26px; font-weight:600; }}
+      .panelText2 {{ font-size:24px; }}
+      .panel {{ fill: rgba(10,16,30,0.55); stroke: rgba(255,255,255,0.18); stroke-width:2; }}
+      .panelPurple {{ fill: rgba(10,16,30,0.55); stroke:#8b5cf6; stroke-width:3; }}
+      .panelGreen  {{ fill: rgba(10,16,30,0.55); stroke:#22c55e; stroke-width:3; }}
+      .panelYellow {{ fill: rgba(10,16,30,0.55); stroke:#f7b500; stroke-width:6; }}
+      .circleA {{ fill: rgba(10,16,30,0.65); stroke:#22c55e; stroke-width:4; }}
+      .srcBox {{ fill: rgba(10,16,30,0.60); stroke: rgba(255,255,255,0.18); stroke-width:3; }}
+      .srcInner {{ fill: rgba(10,16,30,0.35); stroke: rgba(255,255,255,0.15); stroke-width:2; }}
     </style>
   </defs>
 
-  <!-- Fios retangulares do circuito -->
-  <!-- superior -->
-  <line class="w" x1="120" y1="60" x2="860" y2="60"/>
-  <!-- inferior -->
-  <line class="w" x1="120" y1="220" x2="860" y2="220"/>
-  <!-- laterais -->
-  <line class="w" x1="120" y1="60" x2="120" y2="220"/>
-  <line class="w" x1="860" y1="60" x2="860" y2="220"/>
+  <!-- Fundo -->
+  <rect class="bg" x="0" y="0" width="1500" height="420" rx="18"/>
 
-  <!-- Fonte + resistência interna no ramo esquerdo -->
-  <!-- símbolo simplificado: bloco "Fonte" e bloco "r" em série -->
-  <rect class="box" x="60" y="95" width="120" height="50" rx="10"/>
-  <text class="t" x="120" y="125" text-anchor="middle">Fonte</text>
-  <text class="ts" x="120" y="148" text-anchor="middle">ε = {fmt(epsilon,2)} V</text>
+  <!-- Texto: Resistência interna -->
+  <text class="textW label" x="55" y="95">Resistência interna = {fmt(r_int,2)} Ω</text>
 
-  <!-- Conexões da fonte ao fio -->
-  <line class="w" x1="120" y1="60" x2="120" y2="95"/>
-  <line class="w" x1="120" y1="145" x2="120" y2="220"/>
+  <!-- Fonte (esquerda) -->
+  <rect class="srcBox" x="55" y="145" width="170" height="210" rx="28"/>
+  <text class="textW panelText" x="140" y="195" text-anchor="middle">FONTE</text>
+  <rect class="srcInner" x="85" y="220" width="110" height="70" rx="18"/>
+  <text class="textW panelText2" x="140" y="265" text-anchor="middle" fill="#5eead4"> {fmt_voltage(epsilon)} </text>
 
-  <!-- Resistência interna r (bloco) em série na esquerda, entre fonte e circuito -->
-  <rect class="box" x="200" y="110" width="90" height="30" rx="8"/>
-  <text class="ts" x="245" y="132" text-anchor="middle">r = {fmt(r_int,2)} Ω</text>
+  <!-- Painel do voltímetro (topo) -->
+  <text class="textW label" x="770" y="65" text-anchor="middle">Voltímetro</text>
+  <rect class="panelPurple" x="640" y="80" width="260" height="74" rx="16" filter="url(#panelGlowPurple)"/>
+  <text class="textW panelText2" x="770" y="128" text-anchor="middle">
+    V<tspan dy="7" font-size="18">R</tspan><tspan dy="-7"></tspan> = {fmt_voltage(V)}
+  </text>
 
-  <!-- Ligações entre fonte e r -->
-  <line class="w" x1="180" y1="125" x2="200" y2="125"/>
-  <!-- Ligações entre r e circuito -->
-  <line class="w" x1="290" y1="125" x2="320" y2="125"/>
-  <line class="w" x1="320" y1="125" x2="320" y2="60"/>
-  <line class="w" x1="320" y1="125" x2="320" y2="220"/>
+  <!-- Reostato (centro) -->
+  <rect class="panel" x="620" y="175" width="320" height="165" rx="18"/>
+  <text class="textW panelText" x="780" y="220" text-anchor="middle">REOSTATO (R = {fmt(R,0)} Ω)</text>
+  <rect class="panelYellow" x="650" y="245" width="260" height="80" rx="18" filter="url(#panelGlowYellow)"/>
 
-  <!-- Reostato / carga no ramo direito (símbolo como bloco + seta) -->
-  <rect class="box" x="650" y="100" width="160" height="60" rx="10"/>
-  <text class="t" x="730" y="128" text-anchor="middle">Reostato</text>
-  <text class="ts" x="730" y="152" text-anchor="middle">R = {fmt(R,2)} Ω</text>
-  <!-- seta diagonal do reostato -->
-  <line class="w" x1="670" y1="165" x2="800" y2="95"/>
-  <polyline class="w" points="792,98 804,92 798,104"/>
+  <!-- Amperímetro (círculo) -->
+  <circle class="circleA" cx="1125" cy="255" r="38" filter="url(#panelGlowGreen)"/>
+  <text class="textW panelText" x="1125" y="266" text-anchor="middle">A</text>
 
-  <!-- Conexões do reostato ao fio -->
-  <line class="w" x1="650" y1="130" x2="860" y2="130"/>
-  <line class="w" x1="650" y1="130" x2="650" y2="60"/>
-  <line class="w" x1="650" y1="130" x2="650" y2="220"/>
+  <!-- Painel do amperímetro (direita) -->
+  <text class="textW label" x="1320" y="205" text-anchor="middle">Amperímetro</text>
+  <rect class="panelGreen" x="1235" y="220" width="250" height="74" rx="16" filter="url(#panelGlowGreen)"/>
+  <text class="textW panelText2" x="1360" y="268" text-anchor="middle" fill="#86efac">
+    I = {fmt_current(I)}
+  </text>
 
-  <!-- Amperímetro em série no ramo inferior (círculo com A) -->
-  <circle class="meter" cx="470" cy="220" r="28"/>
-  <text class="t" x="470" y="227" text-anchor="middle">A</text>
-  <text class="ts" x="470" y="260" text-anchor="middle">I = {fmt(I,3)} A</text>
+  <!-- Fios (retângulo com “sobe/desce”) -->
+  <!-- segmento superior: sai da fonte até reostato, passando pelo A -->
+  <path class="wire" d="
+    M 225 250
+    L 620 250
+    L 940 250
+    L 1087 250
+    L 150 250
+  " opacity="0"/>
 
-  <!-- Voltímetro em paralelo no circuito (círculo com V) -->
-  <circle class="meter" cx="470" cy="60" r="28"/>
-  <text class="t" x="470" y="67" text-anchor="middle">V</text>
-  <text class="ts" x="470" y="25" text-anchor="middle">V = {fmt(V,3)} V</text>
+  <!-- fio superior real -->
+  <path class="wire" d="
+    M 225 250
+    L 620 250
+    L 940 250
+    L 1087 250
+    L 1470 250
+  "/>
 
-  <!-- Rótulos de tensão do circuito -->
-  <text class="ts" x="900" y="120" text-anchor="end">Tensão no circuito: V</text>
+  <!-- fio inferior -->
+  <path class="wire" d="
+    M 140 355
+    L 1470 355
+  "/>
+
+  <!-- conexão vertical na esquerda (fonte) -->
+  <path class="wire" d="
+    M 140 300
+    L 140 355
+  "/>
+
+  <!-- conexão vertical na direita -->
+  <path class="wire" d="
+    M 1470 250
+    L 1470 355
+  "/>
 
 </svg>
 </div>
+
+<script>
+(function() {{
+  const el = document.getElementById("circuit-scroll");
+  if (!el) return;
+
+  let isDown = false;
+  let startX = 0;
+  let scrollLeft = 0;
+
+  const down = (e) => {{
+    isDown = true;
+    el.classList.add("grabbing");
+    el.classList.remove("grabbable");
+    startX = e.clientX;
+    scrollLeft = el.scrollLeft;
+    el.setPointerCapture(e.pointerId);
+  }};
+
+  const move = (e) => {{
+    if (!isDown) return;
+    const dx = e.clientX - startX;
+    el.scrollLeft = scrollLeft - dx;
+  }};
+
+  const up = (e) => {{
+    isDown = false;
+    el.classList.remove("grabbing");
+    el.classList.add("grabbable");
+    try {{ el.releasePointerCapture(e.pointerId); }} catch(err) {{}}
+  }};
+
+  el.addEventListener("pointerdown", down);
+  el.addEventListener("pointermove", move);
+  el.addEventListener("pointerup", up);
+  el.addEventListener("pointercancel", up);
+}})();
+</script>
 """
-components.html(svg, height=330, scrolling=False)
+components.html(svg_html, height=460, scrolling=False)
 
 st.divider()
 
-# ----------------------------
-# Seção: Gráfico (Curva característica da fonte)
-# ----------------------------
+# ============================
+# Gráfico: Curva característica (2)(3)(4)
+# ============================
 st.header("Gráfico")
 st.subheader("Curva característica da fonte")
 
-# Reta V = epsilon - r I, de I=0 até I=icc
-I_line = np.linspace(0, icc, 200)
+I_line = np.linspace(0, icc, 250)
 V_line = epsilon - r_int * I_line
 
 fig1 = go.Figure()
@@ -267,7 +345,7 @@ fig1.add_trace(go.Scatter(
     line=dict(width=3)
 ))
 
-# Ponto vermelho no estado atual (R escolhido)
+# ponto de operação
 fig1.add_trace(go.Scatter(
     x=[I], y=[V],
     mode="markers+text",
@@ -277,21 +355,55 @@ fig1.add_trace(go.Scatter(
     textposition="middle right"
 ))
 
-# Marca do curto-circuito
+# anotação do epsilon (2)
+fig1.add_annotation(
+    x=0, y=epsilon,
+    xref="x", yref="y",
+    text=f"ε = {fmt(epsilon,2)} V",
+    showarrow=True,
+    arrowhead=2,
+    ax=60, ay=-30,
+    font=dict(size=13, color="#111"),
+    bgcolor="rgba(255,255,255,0.85)",
+    bordercolor="rgba(0,0,0,0.15)",
+    borderwidth=1
+)
+
+# marcador do curto (em (icc,0))
 fig1.add_trace(go.Scatter(
     x=[icc], y=[0],
-    mode="markers+text",
+    mode="markers",
     name="Curto-circuito",
-    marker=dict(color="#444", size=10),
-    text=[f"  icc = {fmt(icc,3)} A"],
-    textposition="top left"
+    marker=dict(color="#333", size=9)
 ))
 
+# icc abaixo do eixo x (4)
+fig1.add_annotation(
+    x=icc, y=0,
+    xref="x", yref="paper",
+    y=-0.18,
+    text=f"icc = {fmt(icc,3)} A",
+    showarrow=False,
+    font=dict(size=13, color="#222"),
+    bgcolor="rgba(255,255,255,0.85)",
+    bordercolor="rgba(0,0,0,0.15)",
+    borderwidth=1
+)
+
+# (3) eixo vertical até 30 V
 fig1.update_layout(
-    margin=dict(l=10, r=10, t=10, b=10),
-    height=420,
-    xaxis=dict(title="Corrente no circuito I (A)", range=[0, I_AXIS_MAX_PAD], fixedrange=True),
-    yaxis=dict(title="Tensão no circuito V (V)", range=[0, V_AXIS_MAX_PAD], fixedrange=True),
+    margin=dict(l=10, r=10, t=10, b=60),
+    height=430,
+    xaxis=dict(
+        title="Corrente no circuito I (A)",
+        range=[0, float(I_AXIS_MAX_GLOBAL)],
+        fixedrange=True
+    ),
+    yaxis=dict(
+        title="Tensão no circuito V (V)",
+        range=[0, 30],
+        fixedrange=True
+    ),
     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0)
 )
 
@@ -299,17 +411,15 @@ st.plotly_chart(fig1, width="stretch", theme="streamlit")
 
 st.caption("a resistência do reostato do circuito foi alterada para obtermos diferentes valores de tensão e corrente do circuito")
 
-# Texto com valores atuais
 st.write(
-    f"**Para o valor atual de R:**  I = **{fmt(I,3)} A** e V = **{fmt(V,3)} V**. "
-    f"**Corrente de curto-circuito:** icc = **{fmt(icc,3)} A**."
+    f"**Para o valor atual de R:**  I = **{fmt(I,3)} A** e V = **{fmt(V,3)} V**."
 )
 
 st.divider()
 
-# ----------------------------
-# Seção: Potência
-# ----------------------------
+# ============================
+# Potência (6): eixos auto-ajustáveis
+# ============================
 st.header("Potência")
 
 st.write("**Potência = energia por tempo (unidade Watts)**")
@@ -317,20 +427,24 @@ st.write("**A partir da equação característica:**")
 st.latex(r"V\,I = \varepsilon\,I - r\,I^2")
 st.latex(r"P_{\mathrm{útil}} = P_g - P_d")
 
-# Curva P_util(I) = epsilon*I - r*I^2, somente no intervalo [0, icc]
-I_pow = np.linspace(0, icc, 250)
+I_pow = np.linspace(0, icc, 300)
 P_curve = epsilon * I_pow - r_int * I_pow**2
+
+P_max = float(np.max(P_curve)) if len(P_curve) else 0.0
+
+# ranges automáticos (boa visualização)
+xmax = max(icc * 1.05, 0.5)
+ymax = max(P_max * 1.20, 1.0)
 
 fig2 = go.Figure()
 
 fig2.add_trace(go.Scatter(
     x=I_pow, y=P_curve,
     mode="lines",
-    name="Pútil(I)",
+    name="Pútil(I) = εI - rI²",
     line=dict(width=3)
 ))
 
-# Ponto vermelho no estado atual
 fig2.add_trace(go.Scatter(
     x=[I], y=[P_util],
     mode="markers+text",
@@ -340,22 +454,21 @@ fig2.add_trace(go.Scatter(
     textposition="middle right"
 ))
 
-# Ponto de máximo (I = icc/2)
-P_max = epsilon * I_opt - r_int * I_opt**2
+# ponto de máximo
 fig2.add_trace(go.Scatter(
-    x=[I_opt], y=[P_max],
+    x=[I_opt], y=[epsilon * I_opt - r_int * I_opt**2],
     mode="markers+text",
     name="Máximo",
     marker=dict(color="#222", size=10),
-    text=[f"  Máx em I=icc/2"],
+    text=["  Máx (icc/2)"],
     textposition="top left"
 ))
 
 fig2.update_layout(
     margin=dict(l=10, r=10, t=10, b=10),
-    height=420,
-    xaxis=dict(title="Corrente I (A)", range=[0, I_AXIS_MAX_PAD], fixedrange=True),
-    yaxis=dict(title="Potência útil Pútil (W)", range=[0, P_AXIS_MAX_PAD], fixedrange=True),
+    height=430,
+    xaxis=dict(title="Corrente I (A)", range=[0, xmax], fixedrange=True),
+    yaxis=dict(title="Potência útil Pútil (W)", range=[0, ymax], fixedrange=True),
     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0)
 )
 
@@ -368,20 +481,23 @@ st.write(
 
 st.divider()
 
-# ----------------------------
-# Seção: Rendimento
-# ----------------------------
+# ============================
+# Rendimento (7): incluir equações de Pútil, Pg, Pd
+# ============================
 st.header("Rendimento")
 
+st.latex(r"P_{\mathrm{útil}} = V\,I")
+st.latex(r"P_g = \varepsilon\,I")
+st.latex(r"P_d = r\,I^2")
 st.latex(r"\eta = \dfrac{P_{\mathrm{útil}}}{P_g}")
 
+st.write(f"Para o valor atual de **R = {fmt(R,0)} Ω**:")
 st.write(
-    f"Para o valor atual de **R = {fmt(R,2)} Ω**:"
-)
-st.write(
-    f"- **Pútil = {fmt(P_util,3)} W**  (na carga)\n"
-    f"- **Pg = {fmt(Pg,3)} W**  (gerada pela fonte)\n"
-    f"- **Pd = {fmt(Pd,3)} W**  (dissipada na resistência interna)"
+    f"- **V = {fmt(V,3)} V**\n"
+    f"- **I = {fmt(I,3)} A**\n"
+    f"- **Pútil = V·I = {fmt(P_util,3)} W**\n"
+    f"- **Pg = ε·I = {fmt(Pg,3)} W**\n"
+    f"- **Pd = r·I² = {fmt(Pd,3)} W**"
 )
 
 st.metric("Rendimento η", f"{fmt(100*eta,2)} %")
