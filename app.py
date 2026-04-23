@@ -73,7 +73,7 @@ def fmt_voltage(V):
 # ============================
 EPS_MIN, EPS_MAX = 10.0, 20.0
 RINT_MIN, RINT_MAX = 0.5, 10.0
-RLOAD_MIN, RLOAD_MAX = 1.0, 2000.0
+RLOAD_MIN, RLOAD_MAX = 1.0, 500.0
 
 # Curva característica: eixo x fixo
 I_AXIS_MAX_GLOBAL = EPS_MAX / RINT_MIN  # 60 A
