@@ -71,7 +71,7 @@ def fmt_voltage(V):
 # ============================
 # Faixas (atualizadas)
 # ============================
-EPS_MIN, EPS_MAX = 10.0, 30.0
+EPS_MIN, EPS_MAX = 10.0, 20.0
 RINT_MIN, RINT_MAX = 0.5, 10.0
 RLOAD_MIN, RLOAD_MAX = 1.0, 2000.0
 
