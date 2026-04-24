@@ -259,7 +259,7 @@ svg_html = f"""
   </text>
 
   <!-- Fios do voltímetro -->
-  <path class="wireThin" d="M 620 260 L 620 300 L 700 195" />
+  <path class="wireThin" d="M 620 260 L 620 195 L 900 195" />
   <path class="wireThin" d="M 1000 260 L 1000 195 L 920 195" />
 
   <!-- AMPERÍMETRO (círculo) -->
