@@ -148,15 +148,22 @@ V_opt = epsilon / 2.0
 st.divider()
 
 # ============================
-# Circuito (SVG corrigido) + drag-to-scroll
+# Circuito (SVG REFEITO) + drag-to-scroll
 # ============================
 st.header("Circuito")
 st.markdown('<div class="hscroll-hint">💡 Dica: no celular, arraste a figura para os lados.</div>', unsafe_allow_html=True)
 
-# IMPORTANTE: é f-string -> chaves literais do CSS/JS precisam ser {{ e }}
+# Layout pensado para caber SEM CORTES no viewBox.
+# - Série: Fonte -> Reostato -> Amperímetro -> retorno -> Fonte
+# - Paralelo: Voltímetro nos terminais do reostato
+# - V (tensão do circuito) acima do voltímetro (como solicitado)
+#
+# ATENÇÃO: é f-string -> chaves literais do CSS/JS precisam ser {{ e }}
 svg_html = f"""
 <div id="circuit-scroll" class="hscroll grabbable">
-<svg width="1900" height="540" viewBox="0 0 1900 540" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Circuito elétrico com fonte, reostato, voltímetro e amperímetro">
+<svg width="1600" height="520" viewBox="0 0 1600 520"
+     xmlns="http://www.w3.org/2000/svg" role="img"
+     aria-label="Circuito elétrico: fonte com r interno, reostato, voltímetro em paralelo e amperímetro em série">
   <defs>
     <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
       <stop offset="0%" stop-color="#050a16"/>
@@ -164,39 +171,73 @@ svg_html = f"""
     </linearGradient>
 
     <filter id="softGlow" x="-25%" y="-25%" width="150%" height="150%">
-      <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#28d17c" flood-opacity="0.45"/>
-      <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#28d17c" flood-opacity="0.25"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#28d17c" flood-opacity="0.55"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="7" flood-color="#28d17c" flood-opacity="0.22"/>
     </filter>
 
     <filter id="panelGlowPurple" x="-25%" y="-25%" width="150%" height="150%">
-      <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#8b5cf6" flood-opacity="0.35"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="7" flood-color="#8b5cf6" flood-opacity="0.38"/>
     </filter>
 
     <filter id="panelGlowGreen" x="-25%" y="-25%" width="150%" height="150%">
-      <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#22c55e" flood-opacity="0.30"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="7" flood-color="#22c55e" flood-opacity="0.34"/>
     </filter>
 
     <filter id="panelGlowYellow" x="-25%" y="-25%" width="150%" height="150%">
-      <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#f7b500" flood-opacity="0.30"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="7" flood-color="#f7b500" flood-opacity="0.30"/>
     </filter>
 
     <style>
       .bg {{ fill: url(#bg); }}
+
+      /* fios */
       .wire {{
-        stroke:#28d17c; stroke-width:12; fill:none;
+        stroke:#28d17c;
+        stroke-width:12;
+        fill:none;
         filter:url(#softGlow);
-        stroke-linecap:round; stroke-linejoin:round;
+        stroke-linecap:round;
+        stroke-linejoin:round;
       }}
       .wireThin {{
-        stroke:#28d17c; stroke-width:8; fill:none;
+        stroke:#28d17c;
+        stroke-width:8;
+        fill:none;
         filter:url(#softGlow);
-        stroke-linecap:round; stroke-linejoin:round;
+        stroke-linecap:round;
+        stroke-linejoin:round;
       }}
-      .node {{ fill:#28d17c; opacity:0.95; filter:url(#softGlow); }}
+
+      /* nós */
+      .node {{
+        fill:#28d17c;
+        opacity:0.98;
+        filter:url(#softGlow);
+      }}
+
+      /* textos */
       .textW {{ font-family: Arial, Helvetica, sans-serif; fill:#e8eefc; }}
-      .label {{ font-size:30px; font-weight:800; }}
-      .subLabel {{ font-size:22px; opacity:0.95; font-weight:600; }}
-      .panelText2 {{ font-size:22px; font-weight:750; }}
+      .title {{ font-size:34px; font-weight:900; }}
+      .label {{ font-size:22px; font-weight:700; opacity:0.96; }}
+      .small {{ font-size:18px; font-weight:650; opacity:0.92; }}
+
+      /* caixas */
+      .srcBox {{
+        fill: rgba(10,16,30,0.60);
+        stroke: rgba(255,255,255,0.20);
+        stroke-width: 3;
+      }}
+      .srcInner {{
+        fill: rgba(10,16,30,0.35);
+        stroke: rgba(255,255,255,0.15);
+        stroke-width: 2;
+      }}
+
+      .panelYellow {{
+        fill: rgba(10,16,30,0.28);
+        stroke:#f7b500;
+        stroke-width:4;
+      }}
       .panelPurple {{
         fill: rgba(10,16,30,0.60);
         stroke:#8b5cf6;
@@ -207,136 +248,123 @@ svg_html = f"""
         stroke:#22c55e;
         stroke-width:3;
       }}
-      .panelYellow {{
-        fill: rgba(10,16,30,0.35);
-        stroke:#f7b500;
-        stroke-width:4;
-      }}
+
       .meterCircle {{
         fill: rgba(10,16,30,0.65);
         stroke: rgba(255,255,255,0.22);
         stroke-width: 3;
       }}
       .meterSymbol {{ font-size:34px; font-weight:900; }}
-      .srcBox {{
-        fill: rgba(10,16,30,0.60);
-        stroke: rgba(255,255,255,0.18);
-        stroke-width:3;
-      }}
-      .srcInner {{
-        fill: rgba(10,16,30,0.35);
-        stroke: rgba(255,255,255,0.15);
-        stroke-width:2;
-      }}
-      .tiny {{ font-size:18px; opacity:0.9; font-weight:600; }}
     </style>
   </defs>
 
   <!-- Fundo -->
-  <rect class="bg" x="0" y="0" width="1900" height="540" rx="18"/>
+  <rect class="bg" x="0" y="0" width="1600" height="520" rx="18"/>
 
   <!-- =======================
-       Componentes (primeiro)
+       COMPONENTES (base)
        ======================= -->
 
   <!-- Fonte (esquerda) -->
-  <text class="textW label" x="70" y="70">Fonte (ajustada em “Parâmetros”)</text>
-  <text class="textW subLabel" x="70" y="110">ε = {fmt(epsilon,2)} V</text>
-  <text class="textW subLabel" x="70" y="145">r = {fmt(r_int,2)} Ω</text>
+  <text class="textW title" x="60" y="70">Fonte (ajustada em “Parâmetros”)</text>
+  <text class="textW label" x="60" y="110">ε = {fmt(epsilon,2)} V</text>
+  <text class="textW label" x="60" y="145">r = {fmt(r_int,2)} Ω</text>
 
-  <rect class="srcBox" x="110" y="175" width="240" height="280" rx="28"/>
-  <text class="textW label" x="230" y="235" text-anchor="middle" font-size="28">FONTE</text>
+  <rect class="srcBox" x="110" y="175" width="260" height="285" rx="28"/>
+  <text class="textW title" x="240" y="235" text-anchor="middle" font-size="28">FONTE</text>
 
-  <rect class="srcInner" x="145" y="265" width="170" height="78" rx="18"/>
-  <text class="textW panelText2" x="230" y="315" text-anchor="middle" fill="#5eead4">ε = {fmt_voltage(epsilon)}</text>
+  <rect class="srcInner" x="150" y="265" width="180" height="78" rx="18"/>
+  <text class="textW label" x="240" y="316" text-anchor="middle" fill="#5eead4">ε = {fmt_voltage(epsilon)}</text>
 
   <!-- símbolo da bateria -->
-  <line x1="195" y1="372" x2="275" y2="372" stroke="#e8eefc" stroke-width="7" stroke-linecap="round"/>
-  <line x1="212" y1="406" x2="258" y2="406" stroke="#e8eefc" stroke-width="7" stroke-linecap="round"/>
-  <text class="textW tiny" x="285" y="378">+</text>
-  <text class="textW tiny" x="265" y="416">−</text>
+  <line x1="200" y1="372" x2="280" y2="372" stroke="#e8eefc" stroke-width="7" stroke-linecap="round"/>
+  <line x1="218" y1="408" x2="262" y2="408" stroke="#e8eefc" stroke-width="7" stroke-linecap="round"/>
+  <text class="textW small" x="290" y="378">+</text>
+  <text class="textW small" x="270" y="418">−</text>
 
-  <!-- Nós da fonte -->
-  <circle class="node" cx="350" cy="270" r="7"/>
-  <circle class="node" cx="350" cy="430" r="7"/>
+  <!-- Nós da fonte (terminais) -->
+  <!-- top e bottom -->
+  <circle class="node" cx="390" cy="255" r="7"/>
+  <circle class="node" cx="390" cy="425" r="7"/>
 
   <!-- Reostato (centro) -->
-  <!-- Caixa do componente (não cobre o fio porque o fio será desenhado depois) -->
-  <rect class="panelYellow" x="640" y="225" width="520" height="130" rx="18" filter="url(#panelGlowYellow)"/>
+  <!-- área de destaque -->
+  <rect class="panelYellow" x="560" y="205" width="520" height="150" rx="18" filter="url(#panelGlowYellow)"/>
 
-  <!-- Nós do reostato -->
-  <circle class="node" cx="660" cy="270" r="7"/>
-  <circle class="node" cx="1140" cy="270" r="7"/>
+  <!-- nós do reostato -->
+  <circle class="node" cx="580" cy="255" r="7"/>
+  <circle class="node" cx="1060" cy="255" r="7"/>
 
-  <!-- Zigzag (símbolo) -->
+  <!-- símbolo em ziguezague -->
   <path class="wireThin" d="
-    M 660 270
-    L 705 240
-    L 750 300
-    L 795 240
-    L 840 300
-    L 885 240
-    L 930 300
-    L 975 240
-    L 1020 300
-    L 1065 240
-    L 1110 300
-    L 1140 270
+    M 580 255
+    L 630 225
+    L 680 285
+    L 730 225
+    L 780 285
+    L 830 225
+    L 880 285
+    L 930 225
+    L 980 285
+    L 1030 225
+    L 1060 255
   " />
 
   <!-- seta do reostato -->
-  <line x1="835" y1="220" x2="980" y2="350" stroke="#f7b500" stroke-width="7" stroke-linecap="round" filter="url(#panelGlowYellow)"/>
-  <polygon points="975,350 1010,352 992,322" fill="#f7b500" filter="url(#panelGlowYellow)"/>
+  <line x1="770" y1="205" x2="920" y2="345" stroke="#f7b500" stroke-width="7" stroke-linecap="round" filter="url(#panelGlowYellow)"/>
+  <polygon points="915,345 952,348 932,318" fill="#f7b500" filter="url(#panelGlowYellow)"/>
 
-  <!-- Texto do reostato embaixo (como você pediu) -->
-  <text class="textW label" x="900" y="410" text-anchor="middle">Reostato (série)</text>
-  <text class="textW subLabel" x="900" y="445" text-anchor="middle">R = {fmt(R,2)} Ω</text>
+  <!-- Texto do reostato embaixo -->
+  <text class="textW title" x="820" y="410" text-anchor="middle">Reostato (série)</text>
+  <text class="textW label" x="820" y="446" text-anchor="middle">R = {fmt(R,2)} Ω</text>
 
-  <!-- Voltímetro (acima, sem sobrepor o reostato) -->
-  <text class="textW label" x="900" y="88" text-anchor="middle">Voltímetro (paralelo)</text>
+  <!-- Voltímetro (em paralelo, acima do reostato) -->
+  <text class="textW title" x="820" y="90" text-anchor="middle">Voltímetro (paralelo)</text>
 
-  <circle class="meterCircle" cx="900" cy="135" r="44"/>
-  <text class="textW meterSymbol" x="900" y="149" text-anchor="middle">V</text>
+  <!-- VALOR DE V acima do voltímetro (pedido) -->
+  <rect class="panelPurple" x="690" y="105" width="260" height="62" rx="16" filter="url(#panelGlowPurple)"/>
+  <text class="textW label" x="820" y="145" text-anchor="middle">V = {fmt_voltage(V)}</text>
 
-  <rect class="panelPurple" x="770" y="175" width="260" height="70" rx="16" filter="url(#panelGlowPurple)"/>
-  <text class="textW panelText2" x="900" y="220" text-anchor="middle">V = {fmt_voltage(V)}</text>
+  <circle class="meterCircle" cx="820" cy="195" r="44"/>
+  <text class="textW meterSymbol" x="820" y="210" text-anchor="middle">V</text>
 
   <!-- Amperímetro (direita) -->
-  <circle class="meterCircle" cx="1370" cy="270" r="46"/>
-  <text class="textW meterSymbol" x="1370" y="285" text-anchor="middle">A</text>
+  <circle class="meterCircle" cx="1220" cy="255" r="46"/>
+  <text class="textW meterSymbol" x="1220" y="271" text-anchor="middle">A</text>
 
-  <text class="textW label" x="1600" y="240" text-anchor="middle">Amperímetro (série)</text>
-  <rect class="panelGreen" x="1470" y="260" width="340" height="82" rx="16" filter="url(#panelGlowGreen)"/>
-  <text class="textW panelText2" x="1640" y="312" text-anchor="middle" fill="#86efac">I = {fmt_current(I)}</text>
+  <text class="textW title" x="1410" y="230" text-anchor="middle">Amperímetro (série)</text>
+  <rect class="panelGreen" x="1285" y="250" width="290" height="82" rx="16" filter="url(#panelGlowGreen)"/>
+  <text class="textW label" x="1430" y="302" text-anchor="middle" fill="#86efac">I = {fmt_current(I)}</text>
+
+  <!-- Legenda -->
+  <text class="textW small" x="60" y="505">
+    Série: fonte → reostato → amperímetro. Paralelo: voltímetro (tensão nos terminais do reostato).
+  </text>
 
   <!-- =======================
-       Fios (por último)
-       para NÃO ficarem escondidos
+       FIOS (por último!)
        ======================= -->
 
-  <!-- Malha superior: fonte -> reostato -> amperímetro -> direita -->
-  <path class="wire" d="M 350 270 L 660 270" />
-  <path class="wire" d="M 1140 270 L 1324 270" />
-  <path class="wire" d="M 1416 270 L 1820 270" />
+  <!-- Fio série superior: Fonte -> Reostato -->
+  <!-- roteado ligeiramente acima da linha do reostato para ficar bem visível -->
+  <path class="wire" d="M 390 255 L 390 235 L 580 235 L 580 255" />
 
-  <!-- Lado direito descendo para o retorno -->
-  <path class="wire" d="M 1820 270 L 1820 430" />
+  <!-- Fio série superior: Reostato -> Amperímetro -->
+  <path class="wire" d="M 1060 255 L 1060 235 L 1174 235 L 1174 255" />
 
-  <!-- Retorno inferior: direita -> fonte -->
-  <path class="wire" d="M 1820 430 L 350 430" />
+  <!-- Fio série superior: Amperímetro -> direita e descida -->
+  <path class="wire" d="M 1266 255 L 1525 255 L 1525 425" />
 
-  <!-- Conexões da fonte até a malha (entrada/saída) -->
-  <path class="wireThin" d="M 350 270 L 350 215" />
-  <path class="wireThin" d="M 350 430 L 350 425" />
+  <!-- Retorno inferior: direita -> Fonte -->
+  <path class="wire" d="M 1525 425 L 390 425" />
 
-  <!-- Paralelo do voltímetro: liga nos terminais do reostato -->
-  <path class="wireThin" d="M 660 270 L 660 135 L 856 135" />
-  <path class="wireThin" d="M 1140 270 L 1140 135 L 944 135" />
+  <!-- Conexão retorno para o terminal inferior da fonte (nó) -->
+  <path class="wireThin" d="M 390 425 L 390 425" />
 
-  <!-- legenda -->
-  <text class="textW tiny" x="70" y="510">
-    Série: fonte → reostato → amperímetro. Paralelo: voltímetro (medindo a tensão nos terminais do reostato).
-  </text>
+  <!-- Paralelo do voltímetro: fios finos até os terminais do reostato -->
+  <path class="wireThin" d="M 580 255 L 580 195 L 776 195" />
+  <path class="wireThin" d="M 1060 255 L 1060 195 L 864 195" />
+
 </svg>
 </div>
 
@@ -379,7 +407,7 @@ svg_html = f"""
 }})();
 </script>
 """
-components.html(svg_html, height=580, scrolling=False)
+components.html(svg_html, height=560, scrolling=False)
 
 st.divider()
 
