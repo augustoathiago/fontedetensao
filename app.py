@@ -246,8 +246,6 @@ svg_html = f"""
   <rect class="panel" x="620" y="220" width="380" height="200" rx="18"/>
   <text class="textW panelText" x="810" y="265" text-anchor="middle">REOSTATO</text>
   <text class="textW panelText2" x="810" y="302" text-anchor="middle">R = {fmt(R,0)} Ω</text>
-  <rect class="panelYellow" x="680" y="325" width="260" height="70" rx="18" filter="url(#panelGlowYellow)"/>
-  <text class="textW small" x="810" y="370" text-anchor="middle">Carga variável</text>
 
   <!-- Nós do reostato -->
   <circle class="node" cx="620" cy="260" r="7"/>
