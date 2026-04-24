@@ -280,7 +280,7 @@ svg_html = f"""
        ============================ -->
 
   <!-- 1) LIGAR FONTE AO REOSTATO (ponto verde -> ponto verde, SEM GAP) -->
-  <path class="wire" d="M 260 260 L 620 1060" />
+  <path class="wire" d="M 260 260 L 620 270" />
 
   <!-- 2) LIGAR REOSTATO AO AMPERÍMETRO (reta horizontal até o círculo) -->
   <!-- círculo: cx=1120, r=42 => borda esquerda x=1078 -->
