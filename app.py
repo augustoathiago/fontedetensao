@@ -195,7 +195,7 @@ svg_html = f"""
         stroke-linecap:round; stroke-linejoin:round;
       }}
       .wireThin {{
-        stroke:#a78bfa; stroke-width:8; fill:none;
+        stroke:#a78bfa; stroke-width:12; fill:none;
         filter:url(#panelGlowPurple);
         stroke-linecap:round; stroke-linejoin:round;
         opacity:0.95;
