@@ -83,8 +83,8 @@ EPS_MIN, EPS_MAX = 10.0, 20.0
 RINT_MIN, RINT_MAX = 0.5, 10.0
 RLOAD_MIN, RLOAD_MAX = 0.1, 500.0
 
-# Curva característica: eixo x fixo (MELHORIA #4)
-I_AXIS_MAX_GLOBAL = 45.0  # agora fixa em 45 A
+# MELHORIA #4: eixo x do gráfico até 45 A
+I_AXIS_MAX_GLOBAL = 45.0
 
 # ============================
 # Início: duas colunas
@@ -148,9 +148,10 @@ V_opt = epsilon / 2.0
 st.divider()
 
 # ============================
-# Circuito (melhorado)
+# Circuito
 # MELHORIA #1: R com duas casas decimais
-# MELHORIA #2: fios verdes com mesma espessura (endpoints alinhados e sem offsets)
+# MELHORIA #2: fios verdes com mesma espessura
+# (template + replace para evitar bug com chaves do JS no f-string)
 # ============================
 st.header("Circuito")
 st.markdown(
@@ -158,12 +159,12 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Constantes geométricas do amperímetro (para evitar "1px" de diferença)
+# Geometria do amperímetro
 A_CX, A_R = 1120, 42
-A_LEFT = A_CX - A_R      # 1078
-A_RIGHT = A_CX + A_R     # 1162
+A_LEFT = A_CX - A_R   # 1078
+A_RIGHT = A_CX + A_R  # 1162
 
-svg_html = f"""
+svg_template = """
 <div id="circuit-scroll" class="hscroll grabbable" aria-label="Circuito com rolagem horizontal">
 <svg width="1600" height="520" viewBox="-70 -70 1740 660"
      xmlns="http://www.w3.org/2000/svg"
@@ -190,9 +191,10 @@ svg_html = f"""
     </filter>
 
     <style>
-      .bg {{ fill: url(#bg); }}
-      /* FIO PRINCIPAL (VERDE) - tudo igual */
-      .wire {{
+      .bg { fill: url(#bg); }
+
+      /* Fio principal padronizado */
+      .wire {
         stroke:#28d17c;
         stroke-width:12;
         fill:none;
@@ -200,8 +202,9 @@ svg_html = f"""
         stroke-linecap:round;
         stroke-linejoin:round;
         vector-effect: non-scaling-stroke;
-      }}
-      .wireThin {{
+      }
+
+      .wireThin {
         stroke:#a78bfa;
         stroke-width:8;
         fill:none;
@@ -210,20 +213,21 @@ svg_html = f"""
         stroke-linejoin:round;
         opacity:0.95;
         vector-effect: non-scaling-stroke;
-      }}
-      .node {{ fill:#28d17c; opacity:0.95; }}
-      .textW {{ font-family: Arial, Helvetica, sans-serif; fill:#e8eefc; }}
-      .label {{ font-size:28px; font-weight:700; }}
-      .small {{ font-size:22px; opacity:0.95; }}
-      .panelText {{ font-size:26px; font-weight:700; }}
-      .panelText2 {{ font-size:24px; font-weight:600; }}
-      .panel {{ fill: rgba(10,16,30,0.55); stroke: rgba(255,255,255,0.18); stroke-width:2; }}
-      .panelPurple {{ fill: rgba(10,16,30,0.55); stroke:#8b5cf6; stroke-width:3; }}
-      .panelGreen  {{ fill: rgba(10,16,30,0.55); stroke:#22c55e; stroke-width:3; }}
-      .circleA {{ fill: rgba(10,16,30,0.65); stroke:#22c55e; stroke-width:4; }}
-      .srcBox {{ fill: rgba(10,16,30,0.60); stroke: rgba(255,255,255,0.20); stroke-width:3; }}
-      .srcInner {{ fill: rgba(10,16,30,0.35); stroke: rgba(255,255,255,0.15); stroke-width:2; }}
-      .battery {{ stroke:#e8eefc; stroke-width:4; fill:none; opacity:0.9; stroke-linecap:round; }}
+      }
+
+      .node { fill:#28d17c; opacity:0.95; }
+      .textW { font-family: Arial, Helvetica, sans-serif; fill:#e8eefc; }
+      .label { font-size:28px; font-weight:700; }
+      .small { font-size:22px; opacity:0.95; }
+      .panelText { font-size:26px; font-weight:700; }
+      .panelText2 { font-size:24px; font-weight:600; }
+      .panel { fill: rgba(10,16,30,0.55); stroke: rgba(255,255,255,0.18); stroke-width:2; }
+      .panelPurple { fill: rgba(10,16,30,0.55); stroke:#8b5cf6; stroke-width:3; }
+      .panelGreen  { fill: rgba(10,16,30,0.55); stroke:#22c55e; stroke-width:3; }
+      .circleA { fill: rgba(10,16,30,0.65); stroke:#22c55e; stroke-width:4; }
+      .srcBox { fill: rgba(10,16,30,0.60); stroke: rgba(255,255,255,0.20); stroke-width:3; }
+      .srcInner { fill: rgba(10,16,30,0.35); stroke: rgba(255,255,255,0.15); stroke-width:2; }
+      .battery { stroke:#e8eefc; stroke-width:4; fill:none; opacity:0.9; stroke-linecap:round; }
     </style>
   </defs>
 
@@ -232,13 +236,13 @@ svg_html = f"""
 
   <!-- Cabeçalho -->
   <text class="textW label" x="60" y="40">Fonte com resistência interna</text>
-  <text class="textW small" x="60" y="78">r = {fmt(r_int,2)} Ω</text>
+  <text class="textW small" x="60" y="78">r = __RINT__ Ω</text>
 
   <!-- BLOCO FONTE -->
   <rect class="srcBox" x="60" y="140" width="200" height="370" rx="28"/>
   <text class="textW panelText" x="160" y="188" text-anchor="middle">FONTE</text>
   <rect class="srcInner" x="95" y="215" width="130" height="78" rx="18"/>
-  <text class="textW panelText2" x="160" y="265" text-anchor="middle" fill="#5eead4">{fmt_voltage(epsilon)}</text>
+  <text class="textW panelText2" x="160" y="265" text-anchor="middle" fill="#5eead4">__EPS__</text>
 
   <!-- Símbolo de bateria -->
   <line class="battery" x1="135" y1="320" x2="185" y2="320"/>
@@ -255,9 +259,7 @@ svg_html = f"""
   <!-- REOSTATO -->
   <rect class="panel" x="620" y="220" width="380" height="100" rx="18"/>
   <text class="textW panelText" x="810" y="265" text-anchor="middle">REOSTATO</text>
-
-  <!-- MELHORIA #1: R com duas casas decimais -->
-  <text class="textW panelText2" x="810" y="302" text-anchor="middle">R = {fmt(R,2)} Ω</text>
+  <text class="textW panelText2" x="810" y="302" text-anchor="middle">R = __RLOAD__ Ω</text>
 
   <!-- Nós do reostato -->
   <circle class="node" cx="620" cy="260" r="7"/>
@@ -267,7 +269,7 @@ svg_html = f"""
   <text class="textW label" x="810" y="85" text-anchor="middle">Voltímetro</text>
   <rect class="panelPurple" x="660" y="125" width="300" height="74" rx="16" filter="url(#panelGlowPurple)"/>
   <text class="textW panelText2" x="810" y="149" text-anchor="middle">
-    V<tspan dy="7" font-size="18">R</tspan><tspan dy="-7"></tspan> = {fmt_voltage(V)}
+    V<tspan dy="7" font-size="18">R</tspan><tspan dy="-7"></tspan> = __VOLT__
   </text>
 
   <!-- Fios do voltímetro -->
@@ -275,29 +277,20 @@ svg_html = f"""
   <path class="wireThin" d="M 1000 260 L 1000 195 L 920 195" />
 
   <!-- AMPERÍMETRO -->
-  <circle class="circleA" cx="{A_CX}" cy="260" r="{A_R}" filter="url(#panelGlowGreen)"/>
-  <text class="textW panelText" x="{A_CX}" y="272" text-anchor="middle">A</text>
+  <circle class="circleA" cx="__A_CX__" cy="260" r="__A_R__" filter="url(#panelGlowGreen)"/>
+  <text class="textW panelText" x="__A_CX__" y="272" text-anchor="middle">A</text>
 
   <!-- Painel do amperímetro -->
   <text class="textW label" x="1390" y="130" text-anchor="middle">Amperímetro</text>
   <rect class="panelGreen" x="1260" y="145" width="310" height="74" rx="16" filter="url(#panelGlowGreen)"/>
   <text class="textW panelText2" x="1415" y="193" text-anchor="middle" fill="#86efac">
-    I = {fmt_current(I)}
+    I = __CURR__
   </text>
 
-  <!-- ============================
-       FIOS PRINCIPAIS (MELHORIA #2)
-       endpoints exatamente nos nós e na borda do amperímetro
-       ============================ -->
-
-  <!-- Fonte -> Reostato -->
+  <!-- FIOS PRINCIPAIS (padronizados) -->
   <path class="wire" d="M 260 260 L 620 260" />
-
-  <!-- Reostato -> Amperímetro (até a borda esquerda) -->
-  <path class="wire" d="M 1000 260 L {A_LEFT} 260" />
-
-  <!-- Retorno: Amperímetro (borda direita) -> Fonte (terminal inferior) -->
-  <path class="wire" d="M {A_RIGHT} 260 L 1551 260 L 1551 460 L 260 460" />
+  <path class="wire" d="M 1000 260 L __A_LEFT__ 260" />
+  <path class="wire" d="M __A_RIGHT__ 260 L 1551 260 L 1551 460 L 260 460" />
 
 </svg>
 </div>
@@ -340,6 +333,18 @@ svg_html = f"""
 })();
 </script>
 """
+
+svg_html = (svg_template
+    .replace("__RINT__", fmt(r_int, 2))
+    .replace("__EPS__", fmt_voltage(epsilon))
+    .replace("__RLOAD__", fmt(R, 2))            # MELHORIA #1 (duas casas)
+    .replace("__VOLT__", fmt_voltage(V))
+    .replace("__CURR__", fmt_current(I))
+    .replace("__A_CX__", str(A_CX))
+    .replace("__A_R__", str(A_R))
+    .replace("__A_LEFT__", str(A_LEFT))
+    .replace("__A_RIGHT__", str(A_RIGHT))
+)
 
 components.html(svg_html, height=580, scrolling=False)
 
@@ -424,7 +429,7 @@ st.divider()
 
 # ============================
 # Potência
-# MELHORIA #3: indicador de Pútil sempre por cima (sem sumir perto dos eixos)
+# MELHORIA #3: indicador de Pútil sempre por cima (não some perto dos eixos)
 # ============================
 st.header("Potência")
 st.write("**Potência = energia por tempo (unidade Watts)**")
@@ -438,27 +443,6 @@ P_curve = epsilon * I_pow - r_int * I_pow**2
 P_max = float(np.max(P_curve)) if len(P_curve) else 0.0
 xmax = max(icc * 1.05, 0.5)
 ymax = max(P_max * 1.20, 1.0)
-
-# posicionamento "inteligente" do texto se estiver muito perto das bordas
-x_pad = 0.06 * (xmax if xmax > 0 else 1.0)
-y_pad = 0.08 * (ymax if ymax > 0 else 1.0)
-near_left = I < (0 + x_pad)
-near_right = I > (xmax - x_pad)
-near_bottom = P_util < (0 + y_pad)
-near_top = P_util > (ymax - y_pad)
-
-if near_left and near_bottom:
-    textpos = "top right"
-elif near_left:
-    textpos = "middle right"
-elif near_right and near_bottom:
-    textpos = "top left"
-elif near_right:
-    textpos = "middle left"
-elif near_top:
-    textpos = "bottom center"
-else:
-    textpos = "top center"
 
 fig2 = go.Figure()
 fig2.add_trace(go.Scatter(
@@ -478,10 +462,7 @@ fig2.add_trace(go.Scatter(
     cliponaxis=False
 ))
 
-# MELHORIA #3:
-# 1) marcador do ponto de operação por último (topo)
-# 2) cliponaxis=False
-# 3) annotation em layer="above"
+# Ponto de operação (por último = topo)
 fig2.add_trace(go.Scatter(
     x=[I], y=[P_util],
     mode="markers",
@@ -490,6 +471,7 @@ fig2.add_trace(go.Scatter(
     cliponaxis=False
 ))
 
+# Annotation sempre "above" e fora do clip
 fig2.add_annotation(
     x=I, y=P_util,
     xref="x", yref="y",
@@ -511,7 +493,7 @@ fig2.update_layout(
         title="Corrente I (A)",
         range=[0, xmax],
         fixedrange=True,
-        layer="below traces"  # eixos abaixo das traces
+        layer="below traces"
     ),
     yaxis=dict(
         title="Potência útil Pútil (W)",
@@ -549,4 +531,3 @@ st.write(
     f"- **Pd = r·I² = {fmt(Pd,3)} W**"
 )
 st.metric("Rendimento η", f"{fmt(100*eta,2)} %")
-``
