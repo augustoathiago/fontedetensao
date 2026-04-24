@@ -253,7 +253,7 @@ svg_html = f"""
 
   <!-- VOLTÍMETRO (mais para cima) -->
   <text class="textW label" x="810" y="85" text-anchor="middle">Voltímetro</text>
-  <rect class="panelPurple" x="660" y="100" width="300" height="74" rx="16" filter="url(#panelGlowPurple)"/>
+  <rect class="panelPurple" x="660" y="50" width="300" height="74" rx="16" filter="url(#panelGlowPurple)"/>
   <text class="textW panelText2" x="810" y="149" text-anchor="middle">
     V<tspan dy="7" font-size="18">R</tspan><tspan dy="-7"></tspan> = {fmt_voltage(V)}
   </text>
