@@ -148,8 +148,9 @@ V_opt = epsilon / 2.0
 st.divider()
 
 # ============================
-# Circuito (NOVO) - sem cortes + swipe no mobile
-# (zigzag removido + 3 fios entre componentes)
+# Circuito (ajustado)
+# - fios corretos entre componentes
+# - corrente e tensão mais para cima (sem sobrepor fio)
 # ============================
 st.header("Circuito")
 st.markdown(
@@ -157,7 +158,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# ATENÇÃO: f-string -> chaves literais do CSS/JS precisam ser {{ e }}
 svg_html = f"""
 <div id="circuit-scroll" class="hscroll grabbable" aria-label="Circuito com rolagem horizontal">
 <svg width="1600" height="520" viewBox="-70 -70 1740 660"
@@ -218,7 +218,7 @@ svg_html = f"""
     </style>
   </defs>
 
-  <!-- Fundo com folga (não corta brilho) -->
+  <!-- Fundo -->
   <rect class="bg" x="-45" y="-45" width="1690" height="610" rx="22"/>
 
   <!-- Cabeçalho -->
@@ -231,16 +231,16 @@ svg_html = f"""
   <rect class="srcInner" x="95" y="215" width="130" height="78" rx="18"/>
   <text class="textW panelText2" x="160" y="265" text-anchor="middle" fill="#5eead4">{fmt_voltage(epsilon)}</text>
 
-  <!-- Símbolo de bateria simples dentro da fonte -->
+  <!-- Símbolo de bateria -->
   <line class="battery" x1="135" y1="320" x2="185" y2="320"/>
   <line class="battery" x1="150" y1="345" x2="170" y2="345"/>
   <line class="battery" x1="160" y1="305" x2="160" y2="360"/>
 
-  <!-- Terminais da fonte (nós) -->
+  <!-- Terminais da fonte -->
   <circle class="node" cx="260" cy="260" r="7"/>
   <circle class="node" cx="260" cy="460" r="7"/>
 
-  <!-- Texto da resistência interna (sem zigzag, conforme pedido) -->
+  <!-- Texto da resistência interna (sem zigzag) -->
   <text class="textW small" x="360" y="210">Resistência interna</text>
 
   <!-- REOSTATO -->
@@ -250,33 +250,34 @@ svg_html = f"""
   <rect class="panelYellow" x="680" y="325" width="260" height="70" rx="18" filter="url(#panelGlowYellow)"/>
   <text class="textW small" x="810" y="370" text-anchor="middle">Carga variável</text>
 
-  <!-- Nós do reostato (para ligar voltímetro em paralelo) -->
+  <!-- Nós do reostato -->
   <circle class="node" cx="620" cy="260" r="7"/>
   <circle class="node" cx="1000" cy="260" r="7"/>
 
-  <!-- VOLTÍMETRO -->
-  <text class="textW label" x="810" y="120" text-anchor="middle">Voltímetro</text>
-  <rect class="panelPurple" x="660" y="135" width="300" height="74" rx="16" filter="url(#panelGlowPurple)"/>
-  <text class="textW panelText2" x="810" y="184" text-anchor="middle">
+  <!-- VOLTÍMETRO (subido um pouco) -->
+  <text class="textW label" x="810" y="95" text-anchor="middle">Voltímetro</text>
+  <rect class="panelPurple" x="660" y="110" width="300" height="74" rx="16" filter="url(#panelGlowPurple)"/>
+  <text class="textW panelText2" x="810" y="159" text-anchor="middle">
     V<tspan dy="7" font-size="18">R</tspan><tspan dy="-7"></tspan> = {fmt_voltage(V)}
   </text>
 
   <!-- Fios do voltímetro (em paralelo com a carga) -->
-  <path class="wireThin" d="M 620 260 L 620 210 L 700 210" />
-  <path class="wireThin" d="M 1000 260 L 1000 210 L 920 210" />
+  <path class="wireThin" d="M 620 260 L 620 205 L 700 205" />
+  <path class="wireThin" d="M 1000 260 L 1000 205 L 920 205" />
 
   <!-- AMPERÍMETRO (símbolo + painel) -->
   <circle class="circleA" cx="1120" cy="260" r="42" filter="url(#panelGlowGreen)"/>
   <text class="textW panelText" x="1120" y="272" text-anchor="middle">A</text>
 
-  <text class="textW label" x="1390" y="210" text-anchor="middle">Amperímetro</text>
-  <rect class="panelGreen" x="1260" y="225" width="310" height="74" rx="16" filter="url(#panelGlowGreen)"/>
-  <text class="textW panelText2" x="1415" y="273" text-anchor="middle" fill="#86efac">
+  <!-- Painel do amperímetro (subido para não sobrepor fio) -->
+  <text class="textW label" x="1390" y="155" text-anchor="middle">Amperímetro</text>
+  <rect class="panelGreen" x="1260" y="170" width="310" height="74" rx="16" filter="url(#panelGlowGreen)"/>
+  <text class="textW panelText2" x="1415" y="218" text-anchor="middle" fill="#86efac">
     I = {fmt_current(I)}
   </text>
 
   <!-- ============================
-       FIOS PRINCIPAIS (conforme pedido)
+       FIOS PRINCIPAIS (3 ligações)
        1) Fonte -> Reostato
        2) Reostato -> Amperímetro
        3) Amperímetro -> Retorno -> Fonte
@@ -285,10 +286,10 @@ svg_html = f"""
   <!-- 1) Fonte -> Reostato -->
   <path class="wire" d="M 260 260 L 620 260" />
 
-  <!-- 2) Reostato -> Amperímetro (conecta no lado esquerdo do círculo) -->
+  <!-- 2) Reostato -> Amperímetro -->
   <path class="wire" d="M 1000 260 L 1078 260" />
 
-  <!-- 3) Amperímetro -> Retorno -> Fonte (sai do lado direito do círculo) -->
+  <!-- 3) Amperímetro -> Retorno -> Fonte (igual ao “L” da sua imagem) -->
   <path class="wire" d="M 1162 260 L 1550 260 L 1550 460 L 260 460" />
 
 </svg>
