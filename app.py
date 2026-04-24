@@ -1,5 +1,96 @@
-import os {
-    min-width: 920px;  /* força haver “lado a lado” para deslizar */
+import os
+import base64
+import numpy as np
+import streamlit as st
+import streamlit.components.v1 as components
+import plotly.graph_objects as go
+
+# ============================
+# Configuração da página
+# ============================
+st.set_page_config(
+    page_title="Simulador Fonte de Tensão Física II",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
+# ============================
+# CSS (mobile-friendly + drag-to-scroll)
+# - (2) logo: evita corte no topo
+# - (3) plotly em mobile: container com scroll horizontal (swipe)
+# ============================
+st.markdown("""
+<style>
+.block-container { padding-top: 1.0rem; padding-bottom: 2rem; }
+
+@media (max-width: 600px) {
+  h1 { font-size: 1.45rem !important; }
+  h2 { font-size: 1.15rem !important; }
+  h3 { font-size: 1.02rem !important; }
+}
+
+/* ============================
+   (2) Logo: não cortar no topo
+   ============================ */
+.logo-wrap{
+  width: 100%;
+  padding-top: 10px;   /* dá “respiro” para não parecer cortado */
+  padding-bottom: 4px;
+  overflow: visible;
+}
+.logo-wrap img{
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+  object-position: top center;
+}
+
+/* ============================
+   Container com scroll horizontal (mobile swipe)
+   ============================ */
+.hscroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 14px;
+  border: 1px solid rgba(49,51,63,0.25);
+  background: #0b1220;
+  padding: 16px;
+  max-width: 100%;
+}
+
+/* força scroll em telas pequenas e evita encolher demais */
+.hscroll svg {
+  display: block;
+  min-width: 1600px;
+  height: auto;
+}
+
+/* Dica */
+.hscroll-hint {
+  font-size: 0.9rem;
+  opacity: 0.75;
+  margin: 0.1rem 0 0.6rem 0;
+}
+
+/* Cursor para drag (desktop) */
+.hscroll.grabbable { cursor: grab; }
+.hscroll.grabbing  { cursor: grabbing; }
+
+/* ============================
+   (3) Plotly: permitir swipe horizontal no celular
+   (sem alterar o gráfico; apenas adiciona scroll no container)
+   ============================ */
+@media (max-width: 900px) {
+  div[data-testid="stPlotlyChart"] > div {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  div[data-testid="stPlotlyChart"] .js-plotly-plot,
+  div[data-testid="stPlotlyChart"] .plot-container.plotly {
+    min-width: 920px;  /* largura “extra” para exigir scroll no mobile */
   }
 }
 </style>
@@ -50,11 +141,7 @@ with col_logo:
             with open(logo_path, "rb") as f:
                 b64 = base64.b64encode(f.read()).decode("utf-8")
             st.markdown(
-                f"""
-                <div class="logo-wrap">
-                  <img src="data:image/png;base64,{b64}" alt="Logo Mauá"/>
-                </div>
-                """,
+                f'<div class="logo-wrap"><img src="data:image/png;base64,{b64}" alt="logo_maua"></div>',
                 unsafe_allow_html=True
             )
         except Exception:
@@ -115,7 +202,9 @@ st.divider()
 
 # ============================
 # Circuito
-# (3) Scroll no mobile: hscroll + touch fallback + iframe scrolling=True
+# R do reostato com 2 casas decimais
+# JS com chaves escapadas ({{ e }}) dentro da f-string
+# (3) já está com swipe horizontal (hscroll)
 # ============================
 st.header("Circuito")
 st.markdown(
@@ -186,97 +275,260 @@ svg_html = f"""
   <text class="textW small" x="60" y="78">r = {fmt(r_int,2)} Ω</text>
 
   <!-- BLOCO FONTE -->
-  <rect class="srcBox" x="60" y="140" width="200" height="
-import base64
-import numpy as np
-import streamlit as st
-import streamlit.components.v1 as components
-import plotly.graph_objects as go
+  <rect class="srcBox" x="60" y="140" width="200" height="370" rx="28"/>
+  <text class="textW panelText" x="160" y="188" text-anchor="middle">FONTE</text>
+  <rect class="srcInner" x="95" y="215" width="130" height="78" rx="18"/>
+  <text class="textW panelText2" x="160" y="265" text-anchor="middle" fill="#5eead4">{fmt_voltage(epsilon)}</text>
+
+  <!-- Símbolo de bateria -->
+  <line class="battery" x1="135" y1="320" x2="185" y2="320"/>
+  <line class="battery" x1="150" y1="345" x2="170" y2="345"/>
+  <line class="battery" x1="160" y1="305" x2="160" y2="360"/>
+
+  <!-- Terminais da fonte -->
+  <circle class="node" cx="260" cy="260" r="7"/>
+  <circle class="node" cx="260" cy="460" r="7"/>
+
+  <!-- REOSTATO -->
+  <rect class="panel" x="620" y="220" width="380" height="100" rx="18"/>
+  <text class="textW panelText" x="810" y="265" text-anchor="middle">REOSTATO</text>
+  <text class="textW panelText2" x="810" y="302" text-anchor="middle">R = {fmt(R,2)} Ω</text>
+
+  <!-- Nós do reostato -->
+  <circle class="node" cx="620" cy="260" r="7"/>
+  <circle class="node" cx="1000" cy="260" r="7"/>
+
+  <!-- VOLTÍMETRO -->
+  <text class="textW label" x="810" y="85" text-anchor="middle">Voltímetro</text>
+  <rect class="panelPurple" x="660" y="125" width="300" height="74" rx="16" filter="url(#panelGlowPurple)"/>
+  <text class="textW panelText2" x="810" y="149" text-anchor="middle">
+    V<tspan dy="7" font-size="18">R</tspan><tspan dy="-7"></tspan> = {fmt_voltage(V)}
+  </text>
+
+  <!-- Fios do voltímetro -->
+  <path class="wireThin" d="M 620 260 L 620 195 L 1000 195" />
+  <path class="wireThin" d="M 1000 260 L 1000 195 L 920 195" />
+
+  <!-- AMPERÍMETRO -->
+  <circle class="circleA" cx="1120" cy="260" r="42" filter="url(#panelGlowGreen)"/>
+  <text class="textW panelText" x="1120" y="272" text-anchor="middle">A</text>
+
+  <!-- Painel do amperímetro -->
+  <text class="textW label" x="1390" y="130" text-anchor="middle">Amperímetro</text>
+  <rect class="panelGreen" x="1260" y="145" width="310" height="74" rx="16" filter="url(#panelGlowGreen)"/>
+  <text class="textW panelText2" x="1415" y="193" text-anchor="middle" fill="#86efac">
+    I = {fmt_current(I)}
+  </text>
+
+  <!-- FIOS PRINCIPAIS -->
+  <path class="wire" d="M 260 260 L 629 261" />
+  <path class="wire" d="M 1000 261 L 1078 260" />
+  <path class="wire" d="M 1163 261 L 1551 261 L 1551 461 L 261 461" />
+
+</svg>
+</div>
+
+<script>
+(function() {{
+  const el = document.getElementById("circuit-scroll");
+  if (!el) return;
+
+  let isDown = false;
+  let startX = 0;
+  let scrollLeft = 0;
+
+  const down = (e) => {{
+    isDown = true;
+    el.classList.add("grabbing");
+    el.classList.remove("grabbable");
+    startX = e.clientX;
+    scrollLeft = el.scrollLeft;
+    try {{ el.setPointerCapture(e.pointerId); }} catch(err) {{}}
+  }};
+
+  const move = (e) => {{
+    if (!isDown) return;
+    const dx = e.clientX - startX;
+    el.scrollLeft = scrollLeft - dx;
+  }};
+
+  const up = (e) => {{
+    isDown = false;
+    el.classList.remove("grabbing");
+    el.classList.add("grabbable");
+    try {{ el.releasePointerCapture(e.pointerId); }} catch(err) {{}}
+  }};
+
+  el.addEventListener("pointerdown", down);
+  el.addEventListener("pointermove", move);
+  el.addEventListener("pointerup", up);
+  el.addEventListener("pointercancel", up);
+}})();
+</script>
+"""
+components.html(svg_html, height=580, scrolling=False)
+
+st.divider()
 
 # ============================
-# Configuração da página
+# Gráfico: Curva característica
+# (1) Corrigir sobreposição: mover anotação do icc para dentro do gráfico
+# (3) CSS já permite swipe horizontal no mobile
 # ============================
-st.set_page_config(
-    page_title="Simulador Fonte de Tensão Física II",
-    layout="wide",
-    initial_sidebar_state="collapsed"
+st.header("Gráfico")
+st.subheader("Curva característica da fonte")
+st.markdown(
+    '<div class="hscroll-hint">📱 No celular: deslize para os lados para ver o gráfico completo.</div>',
+    unsafe_allow_html=True
 )
 
+I_line = np.linspace(0, icc, 250)
+V_line = epsilon - r_int * I_line
+
+fig1 = go.Figure()
+fig1.add_trace(go.Scatter(
+    x=I_line, y=V_line, mode="lines",
+    name="V = ε - r·I", line=dict(width=3)
+))
+
+fig1.add_trace(go.Scatter(
+    x=[I], y=[V],
+    mode="markers+text",
+    name="Ponto de operação",
+    marker=dict(color="red", size=12, line=dict(color="white", width=1)),
+    text=[f"  (I={fmt(I,3)} A, V={fmt(V,3)} V)"],
+    textposition="middle right",
+    cliponaxis=False
+))
+
+fig1.add_annotation(
+    x=0, y=epsilon, xref="x", yref="y",
+    text=f"ε = {fmt(epsilon,2)} V",
+    showarrow=True, arrowhead=2, ax=60, ay=-30,
+    font=dict(size=13, color="#111"),
+    bgcolor="rgba(255,255,255,0.85)",
+    bordercolor="rgba(0,0,0,0.15)", borderwidth=1
+)
+
+fig1.add_trace(go.Scatter(
+    x=[icc], y=[0],
+    mode="markers",
+    name="Curto-circuito",
+    marker=dict(color="#333", size=9),
+    cliponaxis=False
+))
+
+# (1) Antes: yref="paper", y=-0.18 (sobrepunha o título do eixo x)
+# Agora: anotação dentro da área do gráfico, próxima do ponto (icc, 0)
+fig1.add_annotation(
+    x=icc, y=0, xref="x", yref="y",
+    text=f"icc = {fmt(icc,3)} A",
+    showarrow=True,
+    arrowhead=2,
+    ax=0, ay=-35,  # seta apontando para o ponto, texto acima
+    font=dict(size=13, color="#222"),
+    bgcolor="rgba(255,255,255,0.85)",
+    bordercolor="rgba(0,0,0,0.15)", borderwidth=1,
+)
+
+fig1.update_layout(
+    margin=dict(l=10, r=10, t=10, b=80),
+    height=430,
+    xaxis=dict(title="Corrente no circuito I (A)", range=[0, float(I_AXIS_MAX_GLOBAL)], fixedrange=True),
+    yaxis=dict(title="Tensão no circuito V (V)", range=[0, 30], fixedrange=True),
+    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0)
+)
+
+st.plotly_chart(fig1, use_container_width=True, theme="streamlit")
+st.caption("a resistência do reostato do circuito foi alterada para obtermos diferentes valores de tensão e corrente do circuito")
+st.write(f"**Para o valor atual de R:**  I = **{fmt(I,3)} A** e V = **{fmt(V,3)} V**.")
+
+st.divider()
+
 # ============================
-# CSS (mobile-friendly + drag-to-scroll)
-# - (2) logo: evita corte no topo
-# - (3) plotly em mobile: container com scroll horizontal (swipe)
-# - (3) circuito: hscroll com touch-action pan-x
+# Potência
+# (3) CSS já permite swipe horizontal no mobile
 # ============================
-st.markdown("""
-<style>
-.block-container { padding-top: 1.0rem; padding-bottom: 2rem; }
+st.header("Potência")
+st.markdown(
+    '<div class="hscroll-hint">📱 No celular: deslize para os lados para ver o gráfico completo.</div>',
+    unsafe_allow_html=True
+)
 
-@media (max-width: 600px) {
-  h1 { font-size: 1.45rem !important; }
-  h2 { font-size: 1.15rem !important; }
-  h3 { font-size: 1.02rem !important; }
-}
+st.write("**Potência = energia por tempo (unidade Watts)**")
+st.write("**A partir da equação característica:**")
+st.latex(r"V\,I = \varepsilon\,I - r\,I^2")
+st.latex(r"P_{\mathrm{útil}} = P_g - P_d")
 
-/* ============================
-   (2) Logo: não cortar no topo
-   ============================ */
-.logo-wrap{
-  width: 100%;
-  padding-top: 10px;   /* respiro no topo */
-  padding-bottom: 4px;
-  overflow: visible;
-}
-.logo-wrap img{
-  width: 100%;
-  height: auto;
-  display: block;
-  object-fit: contain;
-  object-position: top center;
-}
+I_pow = np.linspace(0, icc, 300)
+P_curve = epsilon * I_pow - r_int * I_pow**2
 
-/* ============================
-   Container com scroll horizontal (mobile swipe)
-   ============================ */
-.hscroll {
-  overflow-x: scroll;              /* scroll garantido */
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  touch-action: pan-x;             /* essencial p/ swipe horizontal */
-  overscroll-behavior-x: contain;  /* evita a página “roubar” o gesto */
-  border-radius: 14px;
-  border: 1px solid rgba(49,51,63,0.25);
-  background: #0b1220;
-  padding: 16px;
-  max-width: 100%;
-}
+P_max = float(np.max(P_curve)) if len(P_curve) else 0.0
+xmax = max(icc * 1.05, 0.5)
+ymax = max(P_max * 1.20, 1.0)
 
-/* força scroll em telas pequenas e evita encolher demais */
-.hscroll svg {
-  display: block;
-  min-width: 1600px;
-  height: auto;
-}
+fig2 = go.Figure()
+fig2.add_trace(go.Scatter(
+    x=I_pow, y=P_curve,
+    mode="lines",
+    name="Pútil(I) = εI - rI²",
+    line=dict(width=3)
+))
 
-/* Dica */
-.hscroll-hint {
-  font-size: 0.9rem;
-  opacity: 0.75;
-  margin: 0.1rem 0 0.6rem 0;
-}
+fig2.add_trace(go.Scatter(
+    x=[I_opt], y=[epsilon * I_opt - r_int * I_opt**2],
+    mode="markers+text",
+    name="Máximo",
+    marker=dict(color="#222", size=10, line=dict(color="white", width=1)),
+    text=["  Máx (icc/2)"],
+    textposition="top left",
+    cliponaxis=False
+))
 
-/* Cursor para drag (desktop) */
-.hscroll.grabbable { cursor: grab; }
-.hscroll.grabbing  { cursor: grabbing; }
+# este traço fica por último para sobrepor
+fig2.add_trace(go.Scatter(
+    x=[I], y=[P_util],
+    mode="markers+text",
+    name="Ponto de operação (Pútil)",
+    marker=dict(color="red", size=13, line=dict(color="white", width=2)),
+    text=[f"  Pútil={fmt(P_util,3)} W"],
+    textposition="top right",
+    textfont=dict(color="red", size=13),
+    cliponaxis=False
+))
 
-/* ============================
-   (3) Plotly: permitir swipe horizontal no celular
-   (sem alterar o gráfico; só adiciona scroll no container)
-   ============================ */
-@media (max-width: 900px) {
-  div[data-testid="stPlotlyChart"] > div {
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    -webkit-overflow-scrolling: touch !important;
-  }
-  div[data-testid="stPlotlyChart"] .js-plotly-plot,
+fig2.update_layout(
+    margin=dict(l=10, r=10, t=10, b=10),
+    height=430,
+    xaxis=dict(title="Corrente I (A)", range=[0, xmax], fixedrange=True),
+    yaxis=dict(title="Potência útil Pútil (W)", range=[0, ymax], fixedrange=True),
+    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0)
+)
+
+st.plotly_chart(fig2, use_container_width=True, theme="streamlit")
+
+st.write(
+    f"Para **Pútil máximo**, a corrente deve ser **icc/2 = {fmt(I_opt,3)} A**, "
+    f"caso onde a tensão do circuito é **ε/2 = {fmt(V_opt,3)} V**."
+)
+
+st.divider()
+
+# ============================
+# Rendimento
+# ============================
+st.header("Rendimento")
+st.latex(r"P_{\mathrm{útil}} = V\,I")
+st.latex(r"P_g = \varepsilon\,I")
+st.latex(r"P_d = r\,I^2")
+st.latex(r"\eta = \dfrac{P_{\mathrm{útil}}}{P_g}")
+
+st.write(f"Para o valor atual de **R = {fmt(R,0)} Ω**:")
+st.write(
+    f"- **V = {fmt(V,3)} V**\n"
+    f"- **I = {fmt(I,3)} A**\n"
+    f"- **Pútil = V·I = {fmt(P_util,3)} W**\n"
+    f"- **Pg = ε·I = {fmt(Pg,3)} W**\n"
+    f"- **Pd = r·I² = {fmt(Pd,3)} W**"
+)
+st.metric("Rendimento η", f"{fmt(100*eta,2)} %")
