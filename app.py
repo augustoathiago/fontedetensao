@@ -25,7 +25,7 @@ st.markdown("""
   h3 { font-size: 1.02rem !important; }
 }
 
-/* Container com scroll horizontal */
+/* Container com scroll horizontal (mobile swipe) */
 .hscroll {
   overflow-x: auto;
   overflow-y: hidden;
@@ -33,15 +33,15 @@ st.markdown("""
   border-radius: 14px;
   border: 1px solid rgba(49,51,63,0.25);
   background: #0b1220;
-  padding: 10px;
-  width: 100%;
-  touch-action: pan-y;
+  padding: 16px;          /* mais folga: evita cortar glow */
+  max-width: 100%;
 }
 
-/* Mantém a largura natural do SVG para permitir scroll */
+/* garante que o SVG não encolha e force scroll em telas pequenas */
 .hscroll svg {
   display: block;
-  max-width: none;
+  min-width: 1600px;      /* força scroll horizontal no mobile */
+  height: auto;
 }
 
 /* Dica */
@@ -51,7 +51,7 @@ st.markdown("""
   margin: 0.1rem 0 0.6rem 0;
 }
 
-/* Cursor para drag */
+/* Cursor para drag (desktop) */
 .hscroll.grabbable { cursor: grab; }
 .hscroll.grabbing  { cursor: grabbing; }
 </style>
@@ -84,7 +84,7 @@ RINT_MIN, RINT_MAX = 0.5, 10.0
 RLOAD_MIN, RLOAD_MAX = 0.1, 500.0
 
 # Curva característica: eixo x fixo
-I_AXIS_MAX_GLOBAL = EPS_MAX / RINT_MIN  # 60 A
+I_AXIS_MAX_GLOBAL = EPS_MAX / RINT_MIN  # 40 A (20/0.5) -> 40; seu comentário dizia 60, mas aqui dá 40.
 
 # ============================
 # Início: duas colunas
@@ -148,20 +148,21 @@ V_opt = epsilon / 2.0
 st.divider()
 
 # ============================
-# Circuito (SVG limpo + sem cortes + drag-to-scroll)
+# Circuito (NOVO) - sem cortes + swipe no mobile
 # ============================
 st.header("Circuito")
 st.markdown(
-    '<div class="hscroll-hint">💡 Dica: no celular, arraste a figura para os lados.</div>',
+    '<div class="hscroll-hint">📱 No celular: deslize para os lados para ver o circuito completo.</div>',
     unsafe_allow_html=True
 )
 
-# ATENÇÃO: f-string -> chaves literais no CSS/JS devem ser {{ e }}
+# ATENÇÃO: f-string -> chaves literais do CSS/JS precisam ser {{ e }}
 svg_html = f"""
-<div id="circuit-scroll" class="hscroll grabbable">
-<svg width="1400" height="460" viewBox="0 0 1400 460"
-     xmlns="http://www.w3.org/2000/svg" role="img"
-     aria-label="Circuito: fonte com resistência interna, reostato, voltímetro em paralelo e amperímetro em série">
+<div id="circuit-scroll" class="hscroll grabbable" aria-label="Circuito com rolagem horizontal">
+<svg width="1600" height="520" viewBox="-70 -70 1740 660"
+     xmlns="http://www.w3.org/2000/svg"
+     preserveAspectRatio="xMinYMin meet"
+     style="overflow: visible;">
 
   <defs>
     <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
@@ -169,220 +170,126 @@ svg_html = f"""
       <stop offset="100%" stop-color="#0b1630"/>
     </linearGradient>
 
-    <!-- brilho suave para fios -->
-    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="0" dy="0" stdDeviation="2.5" flood-color="#28d17c" flood-opacity="0.55"/>
-      <feDropShadow dx="0" dy="0" stdDeviation="6.0" flood-color="#28d17c" flood-opacity="0.22"/>
+    <filter id="softGlow" x="-35%" y="-35%" width="170%" height="170%">
+      <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#28d17c" flood-opacity="0.45"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#28d17c" flood-opacity="0.25"/>
     </filter>
 
-    <filter id="panelGlowPurple" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#8b5cf6" flood-opacity="0.35"/>
+    <filter id="panelGlowPurple" x="-35%" y="-35%" width="170%" height="170%">
+      <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#8b5cf6" flood-opacity="0.35"/>
     </filter>
 
-    <filter id="panelGlowGreen" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#22c55e" flood-opacity="0.30"/>
+    <filter id="panelGlowGreen" x="-35%" y="-35%" width="170%" height="170%">
+      <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#22c55e" flood-opacity="0.30"/>
     </filter>
 
-    <filter id="panelGlowYellow" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#f7b500" flood-opacity="0.28"/>
+    <filter id="panelGlowYellow" x="-35%" y="-35%" width="170%" height="170%">
+      <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#f7b500" flood-opacity="0.30"/>
     </filter>
 
     <style>
       .bg {{ fill: url(#bg); }}
-
-      /* fios (bem visíveis) */
       .wire {{
-        stroke:#28d17c;
-        stroke-width:12;
-        fill:none;
+        stroke:#28d17c; stroke-width:12; fill:none;
         filter:url(#softGlow);
-        stroke-linecap:round;
-        stroke-linejoin:round;
+        stroke-linecap:round; stroke-linejoin:round;
       }}
       .wireThin {{
-        stroke:#28d17c;
-        stroke-width:8;
-        fill:none;
-        filter:url(#softGlow);
-        stroke-linecap:round;
-        stroke-linejoin:round;
+        stroke:#a78bfa; stroke-width:8; fill:none;
+        filter:url(#panelGlowPurple);
+        stroke-linecap:round; stroke-linejoin:round;
+        opacity:0.95;
       }}
-
-      /* nós */
-      .node {{
-        fill:#28d17c;
-        opacity:0.98;
-        filter:url(#softGlow);
-      }}
-
-      /* textos */
+      .node {{ fill:#28d17c; opacity:0.95; }}
       .textW {{ font-family: Arial, Helvetica, sans-serif; fill:#e8eefc; }}
-      .title {{ font-size:30px; font-weight:900; }}
-      .label {{ font-size:20px; font-weight:700; opacity:0.95; }}
-      .small {{ font-size:17px; font-weight:650; opacity:0.92; }}
-
-      /* caixas / componentes */
-      .srcBox {{
-        fill: rgba(10,16,30,0.55);
-        stroke: rgba(255,255,255,0.22);
-        stroke-width: 3;
-      }}
-      .srcInner {{
-        fill: rgba(10,16,30,0.30);
-        stroke: rgba(255,255,255,0.15);
-        stroke-width: 2;
-      }}
-
-      .panelYellow {{
-        fill: rgba(10,16,30,0.18);
-        stroke:#f7b500;
-        stroke-width:4;
-      }}
-      .panelPurple {{
-        fill: rgba(10,16,30,0.55);
-        stroke:#8b5cf6;
-        stroke-width:3;
-      }}
-      .panelGreen {{
-        fill: rgba(10,16,30,0.55);
-        stroke:#22c55e;
-        stroke-width:3;
-      }}
-
-      .meterCircle {{
-        fill: rgba(10,16,30,0.60);
-        stroke: rgba(255,255,255,0.22);
-        stroke-width: 3;
-      }}
-      .meterSymbol {{ font-size:32px; font-weight:900; }}
+      .label {{ font-size:28px; font-weight:700; }}
+      .small {{ font-size:22px; opacity:0.95; }}
+      .panelText {{ font-size:26px; font-weight:700; }}
+      .panelText2 {{ font-size:24px; font-weight:600; }}
+      .panel {{ fill: rgba(10,16,30,0.55); stroke: rgba(255,255,255,0.18); stroke-width:2; }}
+      .panelPurple {{ fill: rgba(10,16,30,0.55); stroke:#8b5cf6; stroke-width:3; }}
+      .panelGreen  {{ fill: rgba(10,16,30,0.55); stroke:#22c55e; stroke-width:3; }}
+      .panelYellow {{ fill: rgba(10,16,30,0.55); stroke:#f7b500; stroke-width:6; }}
+      .circleA {{ fill: rgba(10,16,30,0.65); stroke:#22c55e; stroke-width:4; }}
+      .srcBox {{ fill: rgba(10,16,30,0.60); stroke: rgba(255,255,255,0.20); stroke-width:3; }}
+      .srcInner {{ fill: rgba(10,16,30,0.35); stroke: rgba(255,255,255,0.15); stroke-width:2; }}
+      .zig {{ stroke:#e8eefc; stroke-width:4; fill:none; opacity:0.9; }}
+      .battery {{ stroke:#e8eefc; stroke-width:4; fill:none; opacity:0.9; stroke-linecap:round; }}
     </style>
   </defs>
 
-  <!-- Fundo -->
-  <rect class="bg" x="0" y="0" width="1400" height="460" rx="18"/>
+  <!-- Fundo com folga (não corta brilho) -->
+  <rect class="bg" x="-45" y="-45" width="1690" height="610" rx="22"/>
 
-  <!-- =======================
-       COORDENADAS (padronizadas)
-       =======================
-       Terminais série (linha principal): y = 240
-       Retorno inferior: y = 370
-       Fonte:  x ~ 70..290
-       Reostato: x ~ 420..820
-       Amperímetro: x ~ 980
-       Painel do amperímetro: x ~ 1040..1320
-  -->
+  <!-- Cabeçalho -->
+  <text class="textW label" x="60" y="40">Fonte com resistência interna</text>
+  <text class="textW small" x="60" y="78">r = {fmt(r_int,2)} Ω</text>
 
-  <!-- =======================
-       TEXTOS (não sobrepõem)
-       ======================= -->
-  <text class="textW title" x="60" y="60">Fonte (ajustada em “Parâmetros”)</text>
-  <text class="textW label" x="60" y="98">ε = {fmt(epsilon,2)} V</text>
-  <text class="textW label" x="60" y="128">r = {fmt(r_int,2)} Ω</text>
+  <!-- BLOCO FONTE -->
+  <rect class="srcBox" x="60" y="140" width="200" height="270" rx="28"/>
+  <text class="textW panelText" x="160" y="188" text-anchor="middle">FONTE</text>
+  <rect class="srcInner" x="95" y="215" width="130" height="78" rx="18"/>
+  <text class="textW panelText2" x="160" y="265" text-anchor="middle" fill="#5eead4">{fmt_voltage(epsilon)}</text>
 
-  <!-- =======================
-       FONTE (esquerda)
-       ======================= -->
-  <rect class="srcBox" x="80" y="155" width="210" height="245" rx="26"/>
-  <text class="textW title" x="185" y="208" text-anchor="middle" font-size="26">FONTE</text>
+  <!-- Símbolo de bateria simples dentro da fonte -->
+  <line class="battery" x1="135" y1="320" x2="185" y2="320"/>
+  <line class="battery" x1="150" y1="345" x2="170" y2="345"/>
+  <line class="battery" x1="160" y1="305" x2="160" y2="360"/>
 
-  <rect class="srcInner" x="110" y="228" width="150" height="70" rx="16"/>
-  <text class="textW label" x="185" y="272" text-anchor="middle" fill="#5eead4">ε = {fmt_voltage(epsilon)}</text>
+  <!-- Terminais da fonte (nós) -->
+  <circle class="node" cx="260" cy="260" r="7"/>
+  <circle class="node" cx="260" cy="460" r="7"/>
 
-  <!-- símbolo da bateria -->
-  <line x1="145" y1="328" x2="225" y2="328" stroke="#e8eefc" stroke-width="7" stroke-linecap="round"/>
-  <line x1="162" y1="362" x2="208" y2="362" stroke="#e8eefc" stroke-width="7" stroke-linecap="round"/>
-  <text class="textW small" x="235" y="333">+</text>
-  <text class="textW small" x="215" y="372">−</text>
+  <!-- RESISTÊNCIA INTERNA (zigzag) -->
+  <text class="textW small" x="360" y="170">Resistência interna</text>
+  <path class="zig" d="M 300 260
+                       L 320 240 L 340 280 L 360 240 L 380 280 L 400 240 L 420 280 L 440 240 L 460 260"/>
+  <text class="textW small" x="380" y="305" text-anchor="middle">r</text>
 
-  <!-- Terminais da fonte -->
-  <circle class="node" cx="305" cy="240" r="7"/>
-  <circle class="node" cx="305" cy="370" r="7"/>
+  <!-- REOSTATO -->
+  <rect class="panel" x="620" y="220" width="380" height="200" rx="18"/>
+  <text class="textW panelText" x="810" y="265" text-anchor="middle">REOSTATO</text>
+  <text class="textW panelText2" x="810" y="302" text-anchor="middle">R = {fmt(R,0)} Ω</text>
+  <rect class="panelYellow" x="680" y="325" width="260" height="70" rx="18" filter="url(#panelGlowYellow)"/>
+  <text class="textW small" x="810" y="370" text-anchor="middle">Carga variável</text>
 
-  <!-- =======================
-       REOSTATO (centro)
-       ======================= -->
-  <rect class="panelYellow" x="420" y="185" width="400" height="140" rx="18" filter="url(#panelGlowYellow)"/>
+  <!-- Nós do reostato (para ligar voltímetro em paralelo) -->
+  <circle class="node" cx="620" cy="260" r="7"/>
+  <circle class="node" cx="1000" cy="260" r="7"/>
 
-  <!-- Terminais do reostato -->
-  <circle class="node" cx="420" cy="240" r="7"/>
-  <circle class="node" cx="820" cy="240" r="7"/>
-
-  <!-- Símbolo (zigzag) do reostato -->
-  <path class="wireThin" d="
-    M 420 240
-    L 465 215
-    L 510 265
-    L 555 215
-    L 600 265
-    L 645 215
-    L 690 265
-    L 735 215
-    L 780 265
-    L 820 240
-  " />
-
-  <!-- seta do reostato -->
-  <line x1="585" y1="182" x2="720" y2="318" stroke="#f7b500" stroke-width="7" stroke-linecap="round" filter="url(#panelGlowYellow)"/>
-  <polygon points="715,318 750,322 733,293" fill="#f7b500" filter="url(#panelGlowYellow)"/>
-
-  <!-- Texto do reostato (embaixo, sem sobrepor) -->
-  <text class="textW title" x="620" y="380" text-anchor="middle">Reostato (série)</text>
-  <text class="textW label" x="620" y="412" text-anchor="middle">R = {fmt(R,2)} Ω</text>
-
-  <!-- =======================
-       VOLTÍMETRO (paralelo, acima)
-       ======================= -->
-  <text class="textW title" x="620" y="74" text-anchor="middle">Voltímetro (paralelo)</text>
-
-  <!-- Valor da tensão ACIMA do voltímetro (pedido) -->
-  <rect class="panelPurple" x="490" y="88" width="260" height="58" rx="16" filter="url(#panelGlowPurple)"/>
-  <text class="textW label" x="620" y="126" text-anchor="middle">V = {fmt_voltage(V)}</text>
-
-  <!-- voltímetro (círculo) -->
-  <circle class="meterCircle" cx="620" cy="180" r="42"/>
-  <text class="textW meterSymbol" x="620" y="194" text-anchor="middle">V</text>
-
-  <!-- =======================
-       AMPERÍMETRO (direita - sem corte)
-       ======================= -->
-  <circle class="meterCircle" cx="980" cy="240" r="44"/>
-  <text class="textW meterSymbol" x="980" y="255" text-anchor="middle">A</text>
-
-  <text class="textW title" x="1180" y="205" text-anchor="middle">Amperímetro (série)</text>
-  <rect class="panelGreen" x="1040" y="220" width="320" height="82" rx="16" filter="url(#panelGlowGreen)"/>
-  <text class="textW label" x="1200" y="272" text-anchor="middle" fill="#86efac">I = {fmt_current(I)}</text>
-
-  <!-- =======================
-       FIOS (sem sobreposição / sem sumir)
-       Desenhados por ÚLTIMO e em segmentos
-       ======================= -->
-
-  <!-- Série: Fonte -> Reostato -->
-  <path class="wire" d="M 305 240 L 420 240" />
-
-  <!-- Série: Reostato -> Amperímetro -->
-  <path class="wire" d="M 820 240 L 936 240" />
-
-  <!-- Série: Amperímetro -> canto direito -> retorno -->
-  <path class="wire" d="M 1024 240 L 1330 240 L 1330 370" />
-
-  <!-- Retorno inferior: canto direito -> Fonte -->
-  <path class="wire" d="M 1330 370 L 305 370" />
-
-  <!-- Paralelo do voltímetro: terminais do reostato -> voltímetro -->
-  <path class="wireThin" d="M 420 240 L 420 180 L 578 180" />
-  <path class="wireThin" d="M 820 240 L 820 180 L 662 180" />
-
-  <!-- Nós para reforçar visualmente conexões -->
-  <circle class="node" cx="420" cy="180" r="6"/>
-  <circle class="node" cx="820" cy="180" r="6"/>
-  <circle class="node" cx="1330" cy="240" r="6"/>
-  <circle class="node" cx="1330" cy="370" r="6"/>
-
-  <!-- legenda inferior -->
-  <text class="textW small" x="60" y="445">
-    Série: fonte → reostato → amperímetro → retorno à fonte. Paralelo: voltímetro nos terminais do reostato.
+  <!-- VOLTÍMETRO -->
+  <text class="textW label" x="810" y="120" text-anchor="middle">Voltímetro</text>
+  <rect class="panelPurple" x="660" y="135" width="300" height="74" rx="16" filter="url(#panelGlowPurple)"/>
+  <text class="textW panelText2" x="810" y="184" text-anchor="middle">
+    V<tspan dy="7" font-size="18">R</tspan><tspan dy="-7"></tspan> = {fmt_voltage(V)}
   </text>
+
+  <!-- Fios do voltímetro (em paralelo com a carga) -->
+  <path class="wireThin" d="M 620 260 L 620 210 L 700 210 L 700 209" />
+  <path class="wireThin" d="M 1000 260 L 1000 210 L 920 210 L 920 209" />
+
+  <!-- AMPERÍMETRO (símbolo + painel) -->
+  <circle class="circleA" cx="1120" cy="260" r="42" filter="url(#panelGlowGreen)"/>
+  <text class="textW panelText" x="1120" y="272" text-anchor="middle">A</text>
+
+  <text class="textW label" x="1390" y="210" text-anchor="middle">Amperímetro</text>
+  <rect class="panelGreen" x="1260" y="225" width="310" height="74" rx="16" filter="url(#panelGlowGreen)"/>
+  <text class="textW panelText2" x="1415" y="273" text-anchor="middle" fill="#86efac">
+    I = {fmt_current(I)}
+  </text>
+
+  <!-- FIOS PRINCIPAIS (sem sobreposição) -->
+  <!-- Topo: fonte -> r -> reostato -> amperímetro -> canto direito -->
+  <path class="wire" d="M 260 260 L 300 260" />
+  <path class="wire" d="M 460 260 L 620 260" />
+  <path class="wire" d="M 1000 260 L 1078 260" />
+  <path class="wire" d="M 1162 260 L 1550 260" />
+
+  <!-- Direita: desce -->
+  <path class="wire" d="M 1550 260 L 1550 460" />
+
+  <!-- Base: volta até o terminal inferior da fonte -->
+  <path class="wire" d="M 1550 460 L 260 460" />
 
 </svg>
 </div>
@@ -407,7 +314,6 @@ svg_html = f"""
 
   const move = (e) => {{
     if (!isDown) return;
-    e.preventDefault();
     const dx = e.clientX - startX;
     el.scrollLeft = scrollLeft - dx;
   }};
@@ -420,14 +326,16 @@ svg_html = f"""
   }};
 
   el.addEventListener("pointerdown", down);
-  el.addEventListener("pointermove", move, {{ passive: false }});
+  el.addEventListener("pointermove", move);
   el.addEventListener("pointerup", up);
   el.addEventListener("pointercancel", up);
 }})();
 </script>
 """
 
-components.html(svg_html, height=520, scrolling=False)
+components.html(svg_html, height=580, scrolling=False)
+
+st.divider()
 
 # ============================
 # Gráfico: Curva característica
@@ -439,7 +347,10 @@ I_line = np.linspace(0, icc, 250)
 V_line = epsilon - r_int * I_line
 
 fig1 = go.Figure()
-fig1.add_trace(go.Scatter(x=I_line, y=V_line, mode="lines", name="V = ε - r·I", line=dict(width=3)))
+fig1.add_trace(go.Scatter(
+    x=I_line, y=V_line, mode="lines",
+    name="V = ε - r·I", line=dict(width=3)
+))
 
 fig1.add_trace(go.Scatter(
     x=[I], y=[V],
@@ -459,7 +370,12 @@ fig1.add_annotation(
     bordercolor="rgba(0,0,0,0.15)", borderwidth=1
 )
 
-fig1.add_trace(go.Scatter(x=[icc], y=[0], mode="markers", name="Curto-circuito", marker=dict(color="#333", size=9)))
+fig1.add_trace(go.Scatter(
+    x=[icc], y=[0],
+    mode="markers",
+    name="Curto-circuito",
+    marker=dict(color="#333", size=9)
+))
 
 fig1.add_annotation(
     x=icc, xref="x",
@@ -479,6 +395,7 @@ fig1.update_layout(
     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0)
 )
 
+# Mantive seu padrão para evitar mudanças no comportamento do app
 st.plotly_chart(fig1, width="stretch", theme="streamlit")
 st.caption("a resistência do reostato do circuito foi alterada para obtermos diferentes valores de tensão e corrente do circuito")
 st.write(f"**Para o valor atual de R:**  I = **{fmt(I,3)} A** e V = **{fmt(V,3)} V**.")
@@ -502,7 +419,12 @@ xmax = max(icc * 1.05, 0.5)
 ymax = max(P_max * 1.20, 1.0)
 
 fig2 = go.Figure()
-fig2.add_trace(go.Scatter(x=I_pow, y=P_curve, mode="lines", name="Pútil(I) = εI - rI²", line=dict(width=3)))
+fig2.add_trace(go.Scatter(
+    x=I_pow, y=P_curve,
+    mode="lines",
+    name="Pútil(I) = εI - rI²",
+    line=dict(width=3)
+))
 fig2.add_trace(go.Scatter(
     x=[I], y=[P_util],
     mode="markers+text",
