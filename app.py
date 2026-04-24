@@ -225,7 +225,7 @@ svg_html = f"""
   <text class="textW small" x="60" y="78">r = {fmt(r_int,2)} Ω</text>
 
   <!-- BLOCO FONTE -->
-  <rect class="srcBox" x="60" y="140" width="200" height="470" rx="28"/>
+  <rect class="srcBox" x="60" y="140" width="200" height="370" rx="28"/>
   <text class="textW panelText" x="160" y="188" text-anchor="middle">FONTE</text>
   <rect class="srcInner" x="95" y="215" width="130" height="78" rx="18"/>
   <text class="textW panelText2" x="160" y="265" text-anchor="middle" fill="#5eead4">{fmt_voltage(epsilon)}</text>
