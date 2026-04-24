@@ -83,8 +83,11 @@ EPS_MIN, EPS_MAX = 10.0, 20.0
 RINT_MIN, RINT_MAX = 0.5, 10.0
 RLOAD_MIN, RLOAD_MAX = 0.1, 500.0
 
+# ============================
 # Curva característica: eixo x fixo
-I_AXIS_MAX_GLOBAL = EPS_MAX / RINT_MIN  # 40 A
+# Melhoria (3): mostrar até 45 A no eixo horizontal
+# ============================
+I_AXIS_MAX_GLOBAL = 45.0
 
 # ============================
 # Início: duas colunas
@@ -148,8 +151,8 @@ V_opt = epsilon / 2.0
 st.divider()
 
 # ============================
-# Circuito (melhorado)
-# - AGORA liga os pontos exatamente: fonte->reostato e reostato->amperímetro
+# Circuito
+# Melhoria (1): R no reostato com 2 casas decimais
 # ============================
 st.header("Circuito")
 st.markdown(
@@ -245,13 +248,14 @@ svg_html = f"""
   <!-- REOSTATO -->
   <rect class="panel" x="620" y="220" width="380" height="100" rx="18"/>
   <text class="textW panelText" x="810" y="265" text-anchor="middle">REOSTATO</text>
-  <text class="textW panelText2" x="810" y="302" text-anchor="middle">R = {fmt(R,0)} Ω</text>
+  <!-- Melhoria (1): duas casas decimais -->
+  <text class="textW panelText2" x="810" y="302" text-anchor="middle">R = {fmt(R,2)} Ω</text>
 
   <!-- Nós do reostato -->
   <circle class="node" cx="620" cy="260" r="7"/>
   <circle class="node" cx="1000" cy="260" r="7"/>
 
-  <!-- VOLTÍMETRO (mais para cima) -->
+  <!-- VOLTÍMETRO -->
   <text class="textW label" x="810" y="85" text-anchor="middle">Voltímetro</text>
   <rect class="panelPurple" x="660" y="125" width="300" height="74" rx="16" filter="url(#panelGlowPurple)"/>
   <text class="textW panelText2" x="810" y="149" text-anchor="middle">
@@ -262,37 +266,27 @@ svg_html = f"""
   <path class="wireThin" d="M 620 260 L 620 195 L 1000 195" />
   <path class="wireThin" d="M 1000 260 L 1000 195 L 920 195" />
 
-  <!-- AMPERÍMETRO (círculo) -->
+  <!-- AMPERÍMETRO -->
   <circle class="circleA" cx="1120" cy="260" r="42" filter="url(#panelGlowGreen)"/>
   <text class="textW panelText" x="1120" y="272" text-anchor="middle">A</text>
 
-  <!-- Painel do amperímetro (para cima, sem cruzar fio) -->
+  <!-- Painel do amperímetro -->
   <text class="textW label" x="1390" y="130" text-anchor="middle">Amperímetro</text>
   <rect class="panelGreen" x="1260" y="145" width="310" height="74" rx="16" filter="url(#panelGlowGreen)"/>
   <text class="textW panelText2" x="1415" y="193" text-anchor="middle" fill="#86efac">
     I = {fmt_current(I)}
   </text>
 
-  <!-- ============================
-       FIOS PRINCIPAIS (CORRIGIDOS)
-       ============================ -->
-
-  <!-- 1) LIGAR FONTE AO REOSTATO (ponto verde -> ponto verde, SEM GAP) -->
+  <!-- FIOS PRINCIPAIS -->
   <path class="wire" d="M 260 260 L 629 261" />
-
-  <!-- 2) LIGAR REOSTATO AO AMPERÍMETRO (reta horizontal até o círculo) -->
-  <!-- círculo: cx=1120, r=42 => borda esquerda x=1078 -->
   <path class="wire" d="M 1000 261 L 1078 260" />
-
-  <!-- 3) Retorno: do amperímetro para a fonte (fechando o circuito) -->
-  <!-- borda direita do círculo: 1120+42 = 1162 -->
   <path class="wire" d="M 1163 261 L 1551 261 L 1551 461 L 261 461" />
 
 </svg>
 </div>
 
 <script>
-(function() {{
+(function() {
   const el = document.getElementById("circuit-scroll");
   if (!el) return;
 
@@ -300,33 +294,33 @@ svg_html = f"""
   let startX = 0;
   let scrollLeft = 0;
 
-  const down = (e) => {{
+  const down = (e) => {
     isDown = true;
     el.classList.add("grabbing");
     el.classList.remove("grabbable");
     startX = e.clientX;
     scrollLeft = el.scrollLeft;
-    try {{ el.setPointerCapture(e.pointerId); }} catch(err) {{}}
-  }};
+    try { el.setPointerCapture(e.pointerId); } catch(err) {}
+  };
 
-  const move = (e) => {{
+  const move = (e) => {
     if (!isDown) return;
     const dx = e.clientX - startX;
     el.scrollLeft = scrollLeft - dx;
-  }};
+  };
 
-  const up = (e) => {{
+  const up = (e) => {
     isDown = false;
     el.classList.remove("grabbing");
     el.classList.add("grabbable");
-    try {{ el.releasePointerCapture(e.pointerId); }} catch(err) {{}}
-  }};
+    try { el.releasePointerCapture(e.pointerId); } catch(err) {}
+  };
 
   el.addEventListener("pointerdown", down);
   el.addEventListener("pointermove", move);
   el.addEventListener("pointerup", up);
   el.addEventListener("pointercancel", up);
-}})();
+})();
 </script>
 """
 
@@ -336,6 +330,7 @@ st.divider()
 
 # ============================
 # Gráfico: Curva característica
+# Melhoria (3): eixo até 45 A
 # ============================
 st.header("Gráfico")
 st.subheader("Curva característica da fonte")
@@ -355,7 +350,8 @@ fig1.add_trace(go.Scatter(
     name="Ponto de operação",
     marker=dict(color="red", size=12),
     text=[f"  (I={fmt(I,3)} A, V={fmt(V,3)} V)"],
-    textposition="middle right"
+    textposition="middle right",
+    cliponaxis=False
 ))
 
 fig1.add_annotation(
@@ -371,7 +367,8 @@ fig1.add_trace(go.Scatter(
     x=[icc], y=[0],
     mode="markers",
     name="Curto-circuito",
-    marker=dict(color="#333", size=9)
+    marker=dict(color="#333", size=9),
+    cliponaxis=False
 ))
 
 fig1.add_annotation(
@@ -392,14 +389,16 @@ fig1.update_layout(
     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0)
 )
 
-st.plotly_chart(fig1, width="stretch", theme="streamlit")
+# Compatível com Streamlit: use_container_width=True
+st.plotly_chart(fig1, use_container_width=True, theme="streamlit")
 st.caption("a resistência do reostato do circuito foi alterada para obtermos diferentes valores de tensão e corrente do circuito")
 st.write(f"**Para o valor atual de R:**  I = **{fmt(I,3)} A** e V = **{fmt(V,3)} V**.")
 
 st.divider()
 
 # ============================
-# Potência (eixos auto-ajustáveis)
+# Potência
+# Melhoria (2): indicador de Pútil sempre por cima e sem sumir nos eixos
 # ============================
 st.header("Potência")
 st.write("**Potência = energia por tempo (unidade Watts)**")
@@ -421,22 +420,30 @@ fig2.add_trace(go.Scatter(
     name="Pútil(I) = εI - rI²",
     line=dict(width=3)
 ))
-fig2.add_trace(go.Scatter(
-    x=[I], y=[P_util],
-    mode="markers+text",
-    name="Ponto de operação",
-    marker=dict(color="red", size=12),
-    text=[f"  Pútil={fmt(P_util,3)} W"],
-    textposition="middle right"
-))
 
 fig2.add_trace(go.Scatter(
     x=[I_opt], y=[epsilon * I_opt - r_int * I_opt**2],
     mode="markers+text",
     name="Máximo",
-    marker=dict(color="#222", size=10),
+    marker=dict(color="#222", size=10, line=dict(color="white", width=1)),
     text=["  Máx (icc/2)"],
-    textposition="top left"
+    textposition="top left",
+    cliponaxis=False
+))
+
+# -> Melhoria (2):
+#   - este traço fica POR ÚLTIMO (acima de tudo)
+#   - cliponaxis=False evita desaparecer perto dos eixos
+#   - marcador com contorno e texto em cima à direita melhora visibilidade
+fig2.add_trace(go.Scatter(
+    x=[I], y=[P_util],
+    mode="markers+text",
+    name="Ponto de operação (Pútil)",
+    marker=dict(color="red", size=13, line=dict(color="white", width=2)),
+    text=[f"  Pútil={fmt(P_util,3)} W"],
+    textposition="top right",
+    textfont=dict(color="red", size=13),
+    cliponaxis=False
 ))
 
 fig2.update_layout(
@@ -446,7 +453,8 @@ fig2.update_layout(
     yaxis=dict(title="Potência útil Pútil (W)", range=[0, ymax], fixedrange=True),
     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0)
 )
-st.plotly_chart(fig2, width="stretch", theme="streamlit")
+
+st.plotly_chart(fig2, use_container_width=True, theme="streamlit")
 
 st.write(
     f"Para **Pútil máximo**, a corrente deve ser **icc/2 = {fmt(I_opt,3)} A**, "
@@ -473,3 +481,4 @@ st.write(
     f"- **Pd = r·I² = {fmt(Pd,3)} W**"
 )
 st.metric("Rendimento η", f"{fmt(100*eta,2)} %")
+``
