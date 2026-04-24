@@ -16,8 +16,9 @@ st.set_page_config(
 
 # ============================
 # CSS (mobile-friendly + drag-to-scroll)
-# - (2) logo: evita corte no topo
-# - (3) plotly em mobile: container com scroll horizontal (swipe)
+# - Logo: evita corte no topo
+# - Plotly em mobile: container com scroll horizontal (swipe)
+# - Circuito: swipe + "arrastar com o dedo" consistente no mobile
 # ============================
 st.markdown("""
 <style>
@@ -30,11 +31,11 @@ st.markdown("""
 }
 
 /* ============================
-   (2) Logo: não cortar no topo
+   Logo: não cortar no topo
    ============================ */
 .logo-wrap{
   width: 100%;
-  padding-top: 10px;   /* dá “respiro” para não parecer cortado */
+  padding-top: 10px;
   padding-bottom: 4px;
   overflow: visible;
 }
@@ -48,6 +49,7 @@ st.markdown("""
 
 /* ============================
    Container com scroll horizontal (mobile swipe)
+   + Melhorias de gesto no mobile
    ============================ */
 .hscroll {
   overflow-x: auto;
@@ -58,6 +60,11 @@ st.markdown("""
   background: #0b1220;
   padding: 16px;
   max-width: 100%;
+
+  /* ✅ IMPORTANTE: ajuda o browser a entender que o gesto é horizontal */
+  touch-action: pan-x;
+  /* ✅ Evita que o gesto horizontal “escape” para a página/navegador */
+  overscroll-behavior-x: contain;
 }
 
 /* força scroll em telas pequenas e evita encolher demais */
@@ -79,8 +86,7 @@ st.markdown("""
 .hscroll.grabbing  { cursor: grabbing; }
 
 /* ============================
-   (3) Plotly: permitir swipe horizontal no celular
-   (sem alterar o gráfico; apenas adiciona scroll no container)
+   Plotly: permitir swipe horizontal no celular
    ============================ */
 @media (max-width: 900px) {
   div[data-testid="stPlotlyChart"] > div {
@@ -90,7 +96,7 @@ st.markdown("""
   }
   div[data-testid="stPlotlyChart"] .js-plotly-plot,
   div[data-testid="stPlotlyChart"] .plot-container.plotly {
-    min-width: 920px;  /* largura “extra” para exigir scroll no mobile */
+    min-width: 920px;
   }
 }
 </style>
@@ -123,8 +129,7 @@ RINT_MIN, RINT_MAX = 0.5, 10.0
 RLOAD_MIN, RLOAD_MAX = 0.1, 500.0
 
 # ============================
-# Curva característica
-# eixo x até 45 A
+# Curva característica (x até 45 A)
 # ============================
 I_AXIS_MAX_GLOBAL = 45.0
 
@@ -134,7 +139,6 @@ I_AXIS_MAX_GLOBAL = 45.0
 col_logo, col_title = st.columns([1, 3], vertical_alignment="center")
 
 with col_logo:
-    # (2) Renderização do logo via HTML para evitar corte no topo
     logo_path = "logo_maua.png"
     if os.path.exists(logo_path):
         try:
@@ -145,7 +149,6 @@ with col_logo:
                 unsafe_allow_html=True
             )
         except Exception:
-            # fallback
             st.image(logo_path, use_container_width=True)
     else:
         st.warning("Arquivo logo_maua.png não encontrado no diretório do app.")
@@ -202,13 +205,11 @@ st.divider()
 
 # ============================
 # Circuito
-# R do reostato com 2 casas decimais
-# JS com chaves escapadas ({{ e }}) dentro da f-string
-# (3) já está com swipe horizontal (hscroll)
+# ✅ MELHORIA: "arrastar com o dedo" horizontal no mobile, com trava de direção
 # ============================
 st.header("Circuito")
 st.markdown(
-    '<div class="hscroll-hint">📱 No celular: deslize para os lados para ver o circuito completo.</div>',
+    '<div class="hscroll-hint">📱 No celular: deslize/arraste para os lados para ver o circuito completo.</div>',
     unsafe_allow_html=True
 )
 
@@ -333,36 +334,110 @@ svg_html = f"""
   const el = document.getElementById("circuit-scroll");
   if (!el) return;
 
-  let isDown = false;
-  let startX = 0;
+  // --- Estado do gesto
+  let dragging = false;
+  let locked = false;     // se já travou a direção
+  let lockIsHorizontal = false;
+  let startX = 0, startY = 0;
   let scrollLeft = 0;
 
-  const down = (e) => {{
-    isDown = true;
-    el.classList.add("grabbing");
-    el.classList.remove("grabbable");
-    startX = e.clientX;
+  const LOCK_THRESHOLD = 6; // px (sensibilidade para travar direção)
+
+  function setDraggingUI(on) {{
+    if (on) {{
+      el.classList.add("grabbing");
+      el.classList.remove("grabbable");
+    }} else {{
+      el.classList.remove("grabbing");
+      el.classList.add("grabbable");
+    }}
+  }}
+
+  function begin(x, y) {{
+    dragging = true;
+    locked = false;
+    lockIsHorizontal = false;
+    startX = x;
+    startY = y;
     scrollLeft = el.scrollLeft;
+    setDraggingUI(true);
+  }}
+
+  function update(x, y, evt) {{
+    if (!dragging) return;
+
+    const dx = x - startX;
+    const dy = y - startY;
+
+    // trava a direção após um pequeno limiar (preserva scroll vertical da página)
+    if (!locked) {{
+      if (Math.abs(dx) < LOCK_THRESHOLD && Math.abs(dy) < LOCK_THRESHOLD) {{
+        return; // ainda não decidiu
+      }}
+      locked = true;
+      lockIsHorizontal = Math.abs(dx) >= Math.abs(dy);
+    }}
+
+    if (lockIsHorizontal) {{
+      // ✅ gesto horizontal: arrasta o conteúdo
+      el.scrollLeft = scrollLeft - dx;
+
+      // Se for touch, previne o "puxar" da página enquanto arrasta na horizontal
+      if (evt && evt.cancelable) {{
+        evt.preventDefault();
+      }}
+    }}
+    // se for vertical, não faz nada e deixa a página rolar normalmente
+  }}
+
+  function end() {{
+    dragging = false;
+    locked = false;
+    lockIsHorizontal = false;
+    setDraggingUI(false);
+  }}
+
+  // --- Ponteiros (funciona bem em Android/desktop e vários browsers)
+  const onPointerDown = (e) => {{
+    // somente botão primário (ou toque)
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    begin(e.clientX, e.clientY);
     try {{ el.setPointerCapture(e.pointerId); }} catch(err) {{}}
   }};
 
-  const move = (e) => {{
-    if (!isDown) return;
-    const dx = e.clientX - startX;
-    el.scrollLeft = scrollLeft - dx;
+  const onPointerMove = (e) => {{
+    update(e.clientX, e.clientY, e);
   }};
 
-  const up = (e) => {{
-    isDown = false;
-    el.classList.remove("grabbing");
-    el.classList.add("grabbable");
+  const onPointerUp = (e) => {{
+    end();
     try {{ el.releasePointerCapture(e.pointerId); }} catch(err) {{}}
   }};
 
-  el.addEventListener("pointerdown", down);
-  el.addEventListener("pointermove", move);
-  el.addEventListener("pointerup", up);
-  el.addEventListener("pointercancel", up);
+  el.addEventListener("pointerdown", onPointerDown, {{ passive: true }});
+  el.addEventListener("pointermove", onPointerMove, {{ passive: false }});
+  el.addEventListener("pointerup", onPointerUp, {{ passive: true }});
+  el.addEventListener("pointercancel", onPointerUp, {{ passive: true }});
+
+  // --- Fallback para iOS antigo / casos onde pointer events falham
+  const onTouchStart = (e) => {{
+    if (!e.touches || e.touches.length !== 1) return;
+    const t = e.touches[0];
+    begin(t.clientX, t.clientY);
+  }};
+
+  const onTouchMove = (e) => {{
+    if (!e.touches || e.touches.length !== 1) return;
+    const t = e.touches[0];
+    update(t.clientX, t.clientY, e);
+  }};
+
+  const onTouchEnd = () => end();
+
+  el.addEventListener("touchstart", onTouchStart, {{ passive: true }});
+  el.addEventListener("touchmove", onTouchMove, {{ passive: false }});
+  el.addEventListener("touchend", onTouchEnd, {{ passive: true }});
+  el.addEventListener("touchcancel", onTouchEnd, {{ passive: true }});
 }})();
 </script>
 """
@@ -372,8 +447,6 @@ st.divider()
 
 # ============================
 # Gráfico: Curva característica
-# (1) Corrigir sobreposição: mover anotação do icc para dentro do gráfico
-# (3) CSS já permite swipe horizontal no mobile
 # ============================
 st.header("Gráfico")
 st.subheader("Curva característica da fonte")
@@ -418,14 +491,12 @@ fig1.add_trace(go.Scatter(
     cliponaxis=False
 ))
 
-# (1) Antes: yref="paper", y=-0.18 (sobrepunha o título do eixo x)
-# Agora: anotação dentro da área do gráfico, próxima do ponto (icc, 0)
 fig1.add_annotation(
     x=icc, y=0, xref="x", yref="y",
     text=f"icc = {fmt(icc,3)} A",
     showarrow=True,
     arrowhead=2,
-    ax=0, ay=-35,  # seta apontando para o ponto, texto acima
+    ax=0, ay=-35,
     font=dict(size=13, color="#222"),
     bgcolor="rgba(255,255,255,0.85)",
     bordercolor="rgba(0,0,0,0.15)", borderwidth=1,
@@ -447,7 +518,6 @@ st.divider()
 
 # ============================
 # Potência
-# (3) CSS já permite swipe horizontal no mobile
 # ============================
 st.header("Potência")
 st.markdown(
@@ -485,7 +555,6 @@ fig2.add_trace(go.Scatter(
     cliponaxis=False
 ))
 
-# este traço fica por último para sobrepor
 fig2.add_trace(go.Scatter(
     x=[I], y=[P_util],
     mode="markers+text",
@@ -502,33 +571,4 @@ fig2.update_layout(
     height=430,
     xaxis=dict(title="Corrente I (A)", range=[0, xmax], fixedrange=True),
     yaxis=dict(title="Potência útil Pútil (W)", range=[0, ymax], fixedrange=True),
-    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0)
-)
-
-st.plotly_chart(fig2, use_container_width=True, theme="streamlit")
-
-st.write(
-    f"Para **Pútil máximo**, a corrente deve ser **icc/2 = {fmt(I_opt,3)} A**, "
-    f"caso onde a tensão do circuito é **ε/2 = {fmt(V_opt,3)} V**."
-)
-
-st.divider()
-
-# ============================
-# Rendimento
-# ============================
-st.header("Rendimento")
-st.latex(r"P_{\mathrm{útil}} = V\,I")
-st.latex(r"P_g = \varepsilon\,I")
-st.latex(r"P_d = r\,I^2")
-st.latex(r"\eta = \dfrac{P_{\mathrm{útil}}}{P_g}")
-
-st.write(f"Para o valor atual de **R = {fmt(R,0)} Ω**:")
-st.write(
-    f"- **V = {fmt(V,3)} V**\n"
-    f"- **I = {fmt(I,3)} A**\n"
-    f"- **Pútil = V·I = {fmt(P_util,3)} W**\n"
-    f"- **Pg = ε·I = {fmt(Pg,3)} W**\n"
-    f"- **Pd = r·I² = {fmt(Pd,3)} W**"
-)
-st.metric("Rendimento η", f"{fmt(100*eta,2)} %")
+    legend=dict(orientation="h
