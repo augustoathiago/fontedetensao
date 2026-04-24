@@ -33,14 +33,14 @@ st.markdown("""
   border-radius: 14px;
   border: 1px solid rgba(49,51,63,0.25);
   background: #0b1220;
-  padding: 16px;          /* mais folga: evita cortar glow */
+  padding: 16px;          /* folga para não “cortar” glow */
   max-width: 100%;
 }
 
-/* garante que o SVG não encolha e force scroll em telas pequenas */
+/* força scroll em telas pequenas e evita encolher demais */
 .hscroll svg {
   display: block;
-  min-width: 1600px;      /* força scroll horizontal no mobile */
+  min-width: 1600px;      /* swipe horizontal no mobile */
   height: auto;
 }
 
@@ -84,7 +84,7 @@ RINT_MIN, RINT_MAX = 0.5, 10.0
 RLOAD_MIN, RLOAD_MAX = 0.1, 500.0
 
 # Curva característica: eixo x fixo
-I_AXIS_MAX_GLOBAL = EPS_MAX / RINT_MIN  # 40 A (20/0.5) -> 40; seu comentário dizia 60, mas aqui dá 40.
+I_AXIS_MAX_GLOBAL = EPS_MAX / RINT_MIN  # 40 A
 
 # ============================
 # Início: duas colunas
@@ -149,6 +149,7 @@ st.divider()
 
 # ============================
 # Circuito (NOVO) - sem cortes + swipe no mobile
+# (zigzag removido + 3 fios entre componentes)
 # ============================
 st.header("Circuito")
 st.markdown(
@@ -213,7 +214,6 @@ svg_html = f"""
       .circleA {{ fill: rgba(10,16,30,0.65); stroke:#22c55e; stroke-width:4; }}
       .srcBox {{ fill: rgba(10,16,30,0.60); stroke: rgba(255,255,255,0.20); stroke-width:3; }}
       .srcInner {{ fill: rgba(10,16,30,0.35); stroke: rgba(255,255,255,0.15); stroke-width:2; }}
-      .zig {{ stroke:#e8eefc; stroke-width:4; fill:none; opacity:0.9; }}
       .battery {{ stroke:#e8eefc; stroke-width:4; fill:none; opacity:0.9; stroke-linecap:round; }}
     </style>
   </defs>
@@ -240,11 +240,8 @@ svg_html = f"""
   <circle class="node" cx="260" cy="260" r="7"/>
   <circle class="node" cx="260" cy="460" r="7"/>
 
-  <!-- RESISTÊNCIA INTERNA (zigzag) -->
-  <text class="textW small" x="360" y="170">Resistência interna</text>
-  <path class="zig" d="M 300 260
-                       L 320 240 L 340 280 L 360 240 L 380 280 L 400 240 L 420 280 L 440 240 L 460 260"/>
-  <text class="textW small" x="380" y="305" text-anchor="middle">r</text>
+  <!-- Texto da resistência interna (sem zigzag, conforme pedido) -->
+  <text class="textW small" x="360" y="210">Resistência interna</text>
 
   <!-- REOSTATO -->
   <rect class="panel" x="620" y="220" width="380" height="200" rx="18"/>
@@ -265,8 +262,8 @@ svg_html = f"""
   </text>
 
   <!-- Fios do voltímetro (em paralelo com a carga) -->
-  <path class="wireThin" d="M 620 260 L 620 210 L 700 210 L 700 209" />
-  <path class="wireThin" d="M 1000 260 L 1000 210 L 920 210 L 920 209" />
+  <path class="wireThin" d="M 620 260 L 620 210 L 700 210" />
+  <path class="wireThin" d="M 1000 260 L 1000 210 L 920 210" />
 
   <!-- AMPERÍMETRO (símbolo + painel) -->
   <circle class="circleA" cx="1120" cy="260" r="42" filter="url(#panelGlowGreen)"/>
@@ -278,18 +275,21 @@ svg_html = f"""
     I = {fmt_current(I)}
   </text>
 
-  <!-- FIOS PRINCIPAIS (sem sobreposição) -->
-  <!-- Topo: fonte -> r -> reostato -> amperímetro -> canto direito -->
-  <path class="wire" d="M 260 260 L 300 260" />
-  <path class="wire" d="M 460 260 L 620 260" />
+  <!-- ============================
+       FIOS PRINCIPAIS (conforme pedido)
+       1) Fonte -> Reostato
+       2) Reostato -> Amperímetro
+       3) Amperímetro -> Retorno -> Fonte
+       ============================ -->
+
+  <!-- 1) Fonte -> Reostato -->
+  <path class="wire" d="M 260 260 L 620 260" />
+
+  <!-- 2) Reostato -> Amperímetro (conecta no lado esquerdo do círculo) -->
   <path class="wire" d="M 1000 260 L 1078 260" />
-  <path class="wire" d="M 1162 260 L 1550 260" />
 
-  <!-- Direita: desce -->
-  <path class="wire" d="M 1550 260 L 1550 460" />
-
-  <!-- Base: volta até o terminal inferior da fonte -->
-  <path class="wire" d="M 1550 460 L 260 460" />
+  <!-- 3) Amperímetro -> Retorno -> Fonte (sai do lado direito do círculo) -->
+  <path class="wire" d="M 1162 260 L 1550 260 L 1550 460 L 260 460" />
 
 </svg>
 </div>
@@ -395,7 +395,6 @@ fig1.update_layout(
     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0)
 )
 
-# Mantive seu padrão para evitar mudanças no comportamento do app
 st.plotly_chart(fig1, width="stretch", theme="streamlit")
 st.caption("a resistência do reostato do circuito foi alterada para obtermos diferentes valores de tensão e corrente do circuito")
 st.write(f"**Para o valor atual de R:**  I = **{fmt(I,3)} A** e V = **{fmt(V,3)} V**.")
