@@ -243,7 +243,7 @@ svg_html = f"""
   <text class="textW small" x="360" y="210">Resistência interna</text>
 
   <!-- REOSTATO -->
-  <rect class="panel" x="620" y="220" width="380" height="150" rx="18"/>
+  <rect class="panel" x="620" y="220" width="380" height="100" rx="18"/>
   <text class="textW panelText" x="810" y="265" text-anchor="middle">REOSTATO</text>
   <text class="textW panelText2" x="810" y="302" text-anchor="middle">R = {fmt(R,0)} Ω</text>
 
