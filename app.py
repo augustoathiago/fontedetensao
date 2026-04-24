@@ -506,6 +506,7 @@ st.divider()
 
 # ============================
 # Potência
+# (3) CSS já permite swipe horizontal no mobile
 # ============================
 st.header("Potência")
 st.markdown(
@@ -535,4 +536,58 @@ fig2.add_trace(go.Scatter(
 
 fig2.add_trace(go.Scatter(
     x=[I_opt], y=[epsilon * I_opt - r_int * I_opt**2],
-    mode="markers+
+    mode="markers+text",
+    name="Máximo",
+    marker=dict(color="#222", size=10, line=dict(color="white", width=1)),
+    text=["  Máx (icc/2)"],
+    textposition="top left",
+    cliponaxis=False
+))
+
+# este traço fica por último para sobrepor
+fig2.add_trace(go.Scatter(
+    x=[I], y=[P_util],
+    mode="markers+text",
+    name="Ponto de operação (Pútil)",
+    marker=dict(color="red", size=13, line=dict(color="white", width=2)),
+    text=[f"  Pútil={fmt(P_util,3)} W"],
+    textposition="top right",
+    textfont=dict(color="red", size=13),
+    cliponaxis=False
+))
+
+fig2.update_layout(
+    margin=dict(l=10, r=10, t=10, b=10),
+    height=430,
+    xaxis=dict(title="Corrente I (A)", range=[0, xmax], fixedrange=True),
+    yaxis=dict(title="Potência útil Pútil (W)", range=[0, ymax], fixedrange=True),
+    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0)
+)
+
+st.plotly_chart(fig2, use_container_width=True, theme="streamlit")
+
+st.write(
+    f"Para **Pútil máximo**, a corrente deve ser **icc/2 = {fmt(I_opt,3)} A**, "
+    f"caso onde a tensão do circuito é **ε/2 = {fmt(V_opt,3)} V**."
+)
+
+st.divider()
+
+# ============================
+# Rendimento
+# ============================
+st.header("Rendimento")
+st.latex(r"P_{\mathrm{útil}} = V\,I")
+st.latex(r"P_g = \varepsilon\,I")
+st.latex(r"P_d = r\,I^2")
+st.latex(r"\eta = \dfrac{P_{\mathrm{útil}}}{P_g}")
+
+st.write(f"Para o valor atual de **R = {fmt(R,0)} Ω**:")
+st.write(
+    f"- **V = {fmt(V,3)} V**\n"
+    f"- **I = {fmt(I,3)} A**\n"
+    f"- **Pútil = V·I = {fmt(P_util,3)} W**\n"
+    f"- **Pg = ε·I = {fmt(Pg,3)} W**\n"
+    f"- **Pd = r·I² = {fmt(Pd,3)} W**"
+)
+st.metric("Rendimento η", f"{fmt(100*eta,2)} %")
