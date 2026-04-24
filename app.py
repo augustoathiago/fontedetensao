@@ -84,8 +84,8 @@ RINT_MIN, RINT_MAX = 0.5, 10.0
 RLOAD_MIN, RLOAD_MAX = 0.1, 500.0
 
 # ============================
-# Curva característica: eixo x fixo
-# Melhoria (3): mostrar até 45 A no eixo horizontal
+# Curva característica
+# Melhoria (3): eixo x até 45 A
 # ============================
 I_AXIS_MAX_GLOBAL = 45.0
 
@@ -152,7 +152,8 @@ st.divider()
 
 # ============================
 # Circuito
-# Melhoria (1): R no reostato com 2 casas decimais
+# Melhoria (1): R do reostato com 2 casas decimais
+# CORREÇÃO: chaves do JS escapadas ({{ e }}) dentro da f-string
 # ============================
 st.header("Circuito")
 st.markdown(
@@ -186,10 +187,6 @@ svg_html = f"""
       <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#22c55e" flood-opacity="0.30"/>
     </filter>
 
-    <filter id="panelGlowYellow" x="-35%" y="-35%" width="170%" height="170%">
-      <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#f7b500" flood-opacity="0.30"/>
-    </filter>
-
     <style>
       .bg {{ fill: url(#bg); }}
       .wire {{
@@ -212,7 +209,6 @@ svg_html = f"""
       .panel {{ fill: rgba(10,16,30,0.55); stroke: rgba(255,255,255,0.18); stroke-width:2; }}
       .panelPurple {{ fill: rgba(10,16,30,0.55); stroke:#8b5cf6; stroke-width:3; }}
       .panelGreen  {{ fill: rgba(10,16,30,0.55); stroke:#22c55e; stroke-width:3; }}
-      .panelYellow {{ fill: rgba(10,16,30,0.55); stroke:#f7b500; stroke-width:6; }}
       .circleA {{ fill: rgba(10,16,30,0.65); stroke:#22c55e; stroke-width:4; }}
       .srcBox {{ fill: rgba(10,16,30,0.60); stroke: rgba(255,255,255,0.20); stroke-width:3; }}
       .srcInner {{ fill: rgba(10,16,30,0.35); stroke: rgba(255,255,255,0.15); stroke-width:2; }}
@@ -242,13 +238,9 @@ svg_html = f"""
   <circle class="node" cx="260" cy="260" r="7"/>
   <circle class="node" cx="260" cy="460" r="7"/>
 
-  <!-- Texto da resistência interna -->
-  <text class="textW small" x="360" y="210">Resistência interna</text>
-
   <!-- REOSTATO -->
   <rect class="panel" x="620" y="220" width="380" height="100" rx="18"/>
   <text class="textW panelText" x="810" y="265" text-anchor="middle">REOSTATO</text>
-  <!-- Melhoria (1): duas casas decimais -->
   <text class="textW panelText2" x="810" y="302" text-anchor="middle">R = {fmt(R,2)} Ω</text>
 
   <!-- Nós do reostato -->
@@ -286,7 +278,7 @@ svg_html = f"""
 </div>
 
 <script>
-(function() {
+(function() {{
   const el = document.getElementById("circuit-scroll");
   if (!el) return;
 
@@ -294,33 +286,33 @@ svg_html = f"""
   let startX = 0;
   let scrollLeft = 0;
 
-  const down = (e) => {
+  const down = (e) => {{
     isDown = true;
     el.classList.add("grabbing");
     el.classList.remove("grabbable");
     startX = e.clientX;
     scrollLeft = el.scrollLeft;
-    try { el.setPointerCapture(e.pointerId); } catch(err) {}
-  };
+    try {{ el.setPointerCapture(e.pointerId); }} catch(err) {{}}
+  }};
 
-  const move = (e) => {
+  const move = (e) => {{
     if (!isDown) return;
     const dx = e.clientX - startX;
     el.scrollLeft = scrollLeft - dx;
-  };
+  }};
 
-  const up = (e) => {
+  const up = (e) => {{
     isDown = false;
     el.classList.remove("grabbing");
     el.classList.add("grabbable");
-    try { el.releasePointerCapture(e.pointerId); } catch(err) {}
-  };
+    try {{ el.releasePointerCapture(e.pointerId); }} catch(err) {{}}
+  }};
 
   el.addEventListener("pointerdown", down);
   el.addEventListener("pointermove", move);
   el.addEventListener("pointerup", up);
   el.addEventListener("pointercancel", up);
-})();
+}})();
 </script>
 """
 
@@ -348,7 +340,7 @@ fig1.add_trace(go.Scatter(
     x=[I], y=[V],
     mode="markers+text",
     name="Ponto de operação",
-    marker=dict(color="red", size=12),
+    marker=dict(color="red", size=12, line=dict(color="white", width=1)),
     text=[f"  (I={fmt(I,3)} A, V={fmt(V,3)} V)"],
     textposition="middle right",
     cliponaxis=False
@@ -389,7 +381,6 @@ fig1.update_layout(
     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0)
 )
 
-# Compatível com Streamlit: use_container_width=True
 st.plotly_chart(fig1, use_container_width=True, theme="streamlit")
 st.caption("a resistência do reostato do circuito foi alterada para obtermos diferentes valores de tensão e corrente do circuito")
 st.write(f"**Para o valor atual de R:**  I = **{fmt(I,3)} A** e V = **{fmt(V,3)} V**.")
@@ -398,7 +389,7 @@ st.divider()
 
 # ============================
 # Potência
-# Melhoria (2): indicador de Pútil sempre por cima e sem sumir nos eixos
+# Melhoria (2): ponto Pútil sempre por cima e sem sumir perto dos eixos
 # ============================
 st.header("Potência")
 st.write("**Potência = energia por tempo (unidade Watts)**")
@@ -431,10 +422,7 @@ fig2.add_trace(go.Scatter(
     cliponaxis=False
 ))
 
-# -> Melhoria (2):
-#   - este traço fica POR ÚLTIMO (acima de tudo)
-#   - cliponaxis=False evita desaparecer perto dos eixos
-#   - marcador com contorno e texto em cima à direita melhora visibilidade
+# este traço fica por último para sobrepor
 fig2.add_trace(go.Scatter(
     x=[I], y=[P_util],
     mode="markers+text",
@@ -481,4 +469,3 @@ st.write(
     f"- **Pd = r·I² = {fmt(Pd,3)} W**"
 )
 st.metric("Rendimento η", f"{fmt(100*eta,2)} %")
-``
