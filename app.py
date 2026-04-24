@@ -18,6 +18,7 @@ st.set_page_config(
 # CSS (mobile-friendly + drag-to-scroll)
 # - (2) logo: evita corte no topo
 # - (3) plotly em mobile: container com scroll horizontal (swipe)
+# - (NOVO) Circuito: swipe horizontal com dedo (pan-x) + drag-to-scroll touch/mouse
 # ============================
 st.markdown("""
 <style>
@@ -34,7 +35,7 @@ st.markdown("""
    ============================ */
 .logo-wrap{
   width: 100%;
-  padding-top: 10px;   /* dá “respiro” para não parecer cortado */
+  padding-top: 10px;
   padding-bottom: 4px;
   overflow: visible;
 }
@@ -58,6 +59,14 @@ st.markdown("""
   background: #0b1220;
   padding: 16px;
   max-width: 100%;
+
+  /* >>> NOVO: torna o gesto de dedo explicitamente horizontal */
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
+
+  /* evita seleção de texto durante drag */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* força scroll em telas pequenas e evita encolher demais */
@@ -90,7 +99,7 @@ st.markdown("""
   }
   div[data-testid="stPlotlyChart"] .js-plotly-plot,
   div[data-testid="stPlotlyChart"] .plot-container.plotly {
-    min-width: 920px;  /* largura “extra” para exigir scroll no mobile */
+    min-width: 920px;
   }
 }
 </style>
@@ -145,7 +154,6 @@ with col_logo:
                 unsafe_allow_html=True
             )
         except Exception:
-            # fallback
             st.image(logo_path, use_container_width=True)
     else:
         st.warning("Arquivo logo_maua.png não encontrado no diretório do app.")
@@ -202,13 +210,13 @@ st.divider()
 
 # ============================
 # Circuito
-# R do reostato com 2 casas decimais
-# JS com chaves escapadas ({{ e }}) dentro da f-string
-# (3) já está com swipe horizontal (hscroll)
+# (NOVO) swipe/arrastar mais confiável no mobile:
+# - touch-action: pan-x no CSS
+# - JS detecta gesto horizontal e impede scroll vertical da página durante o drag
 # ============================
 st.header("Circuito")
 st.markdown(
-    '<div class="hscroll-hint">📱 No celular: deslize para os lados para ver o circuito completo.</div>',
+    '<div class="hscroll-hint">📱 No celular: arraste/deslize para os lados para ver o circuito completo.</div>',
     unsafe_allow_html=True
 )
 
@@ -333,39 +341,92 @@ svg_html = f"""
   const el = document.getElementById("circuit-scroll");
   if (!el) return;
 
+  // Estado do drag
   let isDown = false;
   let startX = 0;
+  let startY = 0;
   let scrollLeft = 0;
+  let lockHorizontal = false;   // só trava quando o gesto é claramente horizontal
 
-  const down = (e) => {{
-    isDown = true;
-    el.classList.add("grabbing");
-    el.classList.remove("grabbable");
-    startX = e.clientX;
-    scrollLeft = el.scrollLeft;
-    try {{ el.setPointerCapture(e.pointerId); }} catch(err) {{}}
+  const getPoint = (e) => {{
+    // pointer/mouse: clientX/Y direto; touch: primeiro toque
+    if (e.touches && e.touches.length) {{
+      return {{ x: e.touches[0].clientX, y: e.touches[0].clientY }};
+    }}
+    return {{ x: e.clientX, y: e.clientY }};
   }};
 
-  const move = (e) => {{
+  const onDown = (e) => {{
+    // Não interfere em links etc. (não há no SVG, mas mantém robustez)
+    isDown = true;
+    lockHorizontal = false;
+
+    el.classList.add("grabbing");
+    el.classList.remove("grabbable");
+
+    const p = getPoint(e);
+    startX = p.x;
+    startY = p.y;
+    scrollLeft = el.scrollLeft;
+
+    // Pointer capture (quando disponível)
+    if (e.pointerId !== undefined) {{
+      try {{ el.setPointerCapture(e.pointerId); }} catch(err) {{}}
+    }}
+  }};
+
+  const onMove = (e) => {{
     if (!isDown) return;
-    const dx = e.clientX - startX;
+
+    const p = getPoint(e);
+    const dx = p.x - startX;
+    const dy = p.y - startY;
+
+    // Decide se o usuário quer rolar horizontalmente
+    if (!lockHorizontal) {{
+      // se o movimento horizontal superar o vertical (com folga), trava em horizontal
+      if (Math.abs(dx) > Math.abs(dy) + 6) {{
+        lockHorizontal = true;
+      }} else {{
+        // ainda não travou: deixa a rolagem vertical normal
+        return;
+      }}
+    }}
+
+    // Se está em gesto horizontal: impede "scroll da página" e arrasta o container
+    // IMPORTANTE: precisa de listener touchmove com passive:false
+    if (e.cancelable) e.preventDefault();
     el.scrollLeft = scrollLeft - dx;
   }};
 
-  const up = (e) => {{
+  const onUp = (e) => {{
     isDown = false;
+    lockHorizontal = false;
+
     el.classList.remove("grabbing");
     el.classList.add("grabbable");
-    try {{ el.releasePointerCapture(e.pointerId); }} catch(err) {{}}
+
+    if (e && e.pointerId !== undefined) {{
+      try {{ el.releasePointerCapture(e.pointerId); }} catch(err) {{}}
+    }}
   }};
 
-  el.addEventListener("pointerdown", down);
-  el.addEventListener("pointermove", move);
-  el.addEventListener("pointerup", up);
-  el.addEventListener("pointercancel", up);
+  // Pointer events (mais moderno; cobre mouse + touch em muitos browsers)
+  el.addEventListener("pointerdown", onDown);
+  el.addEventListener("pointermove", onMove);
+  el.addEventListener("pointerup", onUp);
+  el.addEventListener("pointercancel", onUp);
+
+  // Touch fallback (iOS/Safari às vezes funciona melhor com touch explícito)
+  el.addEventListener("touchstart", onDown, {{ passive: true }});
+  el.addEventListener("touchmove", onMove, {{ passive: false }});
+  el.addEventListener("touchend", onUp, {{ passive: true }});
+  el.addEventListener("touchcancel", onUp, {{ passive: true }});
 }})();
 </script>
 """
+
+# scrolling=False mantém o iframe sem scroll próprio; o scroll está no div interno
 components.html(svg_html, height=580, scrolling=False)
 
 st.divider()
@@ -418,14 +479,12 @@ fig1.add_trace(go.Scatter(
     cliponaxis=False
 ))
 
-# (1) Antes: yref="paper", y=-0.18 (sobrepunha o título do eixo x)
-# Agora: anotação dentro da área do gráfico, próxima do ponto (icc, 0)
 fig1.add_annotation(
     x=icc, y=0, xref="x", yref="y",
     text=f"icc = {fmt(icc,3)} A",
     showarrow=True,
     arrowhead=2,
-    ax=0, ay=-35,  # seta apontando para o ponto, texto acima
+    ax=0, ay=-35,
     font=dict(size=13, color="#222"),
     bgcolor="rgba(255,255,255,0.85)",
     bordercolor="rgba(0,0,0,0.15)", borderwidth=1,
@@ -447,7 +506,6 @@ st.divider()
 
 # ============================
 # Potência
-# (3) CSS já permite swipe horizontal no mobile
 # ============================
 st.header("Potência")
 st.markdown(
@@ -477,58 +535,4 @@ fig2.add_trace(go.Scatter(
 
 fig2.add_trace(go.Scatter(
     x=[I_opt], y=[epsilon * I_opt - r_int * I_opt**2],
-    mode="markers+text",
-    name="Máximo",
-    marker=dict(color="#222", size=10, line=dict(color="white", width=1)),
-    text=["  Máx (icc/2)"],
-    textposition="top left",
-    cliponaxis=False
-))
-
-# este traço fica por último para sobrepor
-fig2.add_trace(go.Scatter(
-    x=[I], y=[P_util],
-    mode="markers+text",
-    name="Ponto de operação (Pútil)",
-    marker=dict(color="red", size=13, line=dict(color="white", width=2)),
-    text=[f"  Pútil={fmt(P_util,3)} W"],
-    textposition="top right",
-    textfont=dict(color="red", size=13),
-    cliponaxis=False
-))
-
-fig2.update_layout(
-    margin=dict(l=10, r=10, t=10, b=10),
-    height=430,
-    xaxis=dict(title="Corrente I (A)", range=[0, xmax], fixedrange=True),
-    yaxis=dict(title="Potência útil Pútil (W)", range=[0, ymax], fixedrange=True),
-    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0)
-)
-
-st.plotly_chart(fig2, use_container_width=True, theme="streamlit")
-
-st.write(
-    f"Para **Pútil máximo**, a corrente deve ser **icc/2 = {fmt(I_opt,3)} A**, "
-    f"caso onde a tensão do circuito é **ε/2 = {fmt(V_opt,3)} V**."
-)
-
-st.divider()
-
-# ============================
-# Rendimento
-# ============================
-st.header("Rendimento")
-st.latex(r"P_{\mathrm{útil}} = V\,I")
-st.latex(r"P_g = \varepsilon\,I")
-st.latex(r"P_d = r\,I^2")
-st.latex(r"\eta = \dfrac{P_{\mathrm{útil}}}{P_g}")
-
-st.write(f"Para o valor atual de **R = {fmt(R,0)} Ω**:")
-st.write(
-    f"- **V = {fmt(V,3)} V**\n"
-    f"- **I = {fmt(I,3)} A**\n"
-    f"- **Pútil = V·I = {fmt(P_util,3)} W**\n"
-    f"- **Pg = ε·I = {fmt(Pg,3)} W**\n"
-    f"- **Pd = r·I² = {fmt(Pd,3)} W**"
-)
-st.metric("Rendimento η", f"{fmt(100*eta,2)} %")
+    mode="markers+
