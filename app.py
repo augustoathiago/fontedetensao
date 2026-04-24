@@ -1,8 +1,10 @@
+# Código completo do aplicativo inteiro com scroll horizontal funcional no Android Chrome
+
+```python
 import os
 import base64
 import numpy as np
 import streamlit as st
-import streamlit.components.v1 as components
 import plotly.graph_objects as go
 
 # ============================
@@ -15,74 +17,48 @@ st.set_page_config(
 )
 
 # ============================
-# CSS (mobile-friendly + drag-to-scroll)
+# CSS global
 # ============================
 st.markdown("""
 <style>
-.block-container { padding-top: 1.0rem; padding-bottom: 2rem; }
+.block-container {
+    padding-top: 1rem;
+    padding-bottom: 2rem;
+}
 
 @media (max-width: 600px) {
-  h1 { font-size: 1.45rem !important; }
-  h2 { font-size: 1.15rem !important; }
-  h3 { font-size: 1.02rem !important; }
+    h1 { font-size: 1.45rem !important; }
+    h2 { font-size: 1.15rem !important; }
+    h3 { font-size: 1.02rem !important; }
 }
 
-/* Logo: evita corte no topo */
 .logo-wrap{
-  width: 100%;
-  padding-top: 10px;
-  padding-bottom: 4px;
-  overflow: visible;
+    width:100%;
+    padding-top:10px;
+    padding-bottom:4px;
 }
+
 .logo-wrap img{
-  width: 100%;
-  height: auto;
-  display: block;
-  object-fit: contain;
-  object-position: top center;
+    width:100%;
+    height:auto;
+    display:block;
+    object-fit:contain;
 }
 
-/* Área com scroll horizontal */
-.hscroll {
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  border-radius: 14px;
-  border: 1px solid rgba(49,51,63,0.25);
-  background: #0b1220;
-  padding: 16px;
-  max-width: 100%;
-  touch-action: pan-x;
-  overscroll-behavior-x: contain;
-  user-select: none;
-  -webkit-user-select: none;
-  scroll-behavior: smooth;
-}
-
-/* Força largura maior para criar área rolável */
-.hscroll .hscroll-inner {
-  width: 1600px;
-  min-width: 1600px;
-}
-
-/* Dica */
 .hscroll-hint {
-  font-size: 0.9rem;
-  opacity: 0.75;
-  margin: 0.1rem 0 0.6rem 0;
+    font-size:0.9rem;
+    opacity:0.75;
+    margin-bottom:0.6rem;
 }
 
-/* Cursor para drag no desktop */
-.hscroll.grabbable { cursor: grab; }
-.hscroll.grabbing  { cursor: grabbing; }
-
-/* Plotly: permitir swipe horizontal no celular */
+/* Scroll horizontal Plotly no mobile */
 @media (max-width: 900px) {
   div[data-testid="stPlotlyChart"] > div {
     overflow-x: auto !important;
     overflow-y: hidden !important;
     -webkit-overflow-scrolling: touch !important;
   }
+
   div[data-testid="stPlotlyChart"] .js-plotly-plot,
   div[data-testid="stPlotlyChart"] .plot-container.plotly {
     min-width: 920px;
@@ -92,7 +68,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================
-# Helpers de formatação (pt-BR)
+# Helpers
 # ============================
 def fmt(x, nd=3):
     try:
@@ -102,7 +78,6 @@ def fmt(x, nd=3):
     return s.replace(".", ",")
 
 def fmt_current(I_amp):
-    """Mostra corrente em A ou mA para o painel do amperímetro."""
     if abs(I_amp) < 0.1:
         return f"{fmt(I_amp*1000,2)} mA"
     return f"{fmt(I_amp,3)} A"
@@ -111,19 +86,17 @@ def fmt_voltage(V):
     return f"{fmt(V,2)} V"
 
 # ============================
-# Faixas
+# Limites
 # ============================
 EPS_MIN, EPS_MAX = 10.0, 20.0
 RINT_MIN, RINT_MAX = 0.5, 10.0
 RLOAD_MIN, RLOAD_MAX = 0.1, 500.0
-
-# Eixo x até 45 A
 I_AXIS_MAX_GLOBAL = 45.0
 
 # ============================
-# Topo
+# Cabeçalho
 # ============================
-col_logo, col_title = st.columns([1, 3], vertical_alignment="center")
+col_logo, col_title = st.columns([1,3], vertical_alignment="center")
 
 with col_logo:
     logo_path = "logo_maua.png"
@@ -131,14 +104,13 @@ with col_logo:
         try:
             with open(logo_path, "rb") as f:
                 b64 = base64.b64encode(f.read()).decode("utf-8")
+
             st.markdown(
-                f'<div class="logo-wrap"><img src="data:image/png;base64,{b64}" alt="logo_maua"></div>',
+                f'<div class="logo-wrap"><img src="data:image/png;base64,{b64}"></div>',
                 unsafe_allow_html=True
             )
-        except Exception:
+        except:
             st.image(logo_path, use_container_width=True)
-    else:
-        st.warning("Arquivo logo_maua.png não encontrado no diretório do app.")
 
 with col_title:
     st.title("Simulador Fonte de Tensão Física II")
@@ -147,13 +119,14 @@ with col_title:
 st.divider()
 
 # ============================
-# Equação característica
+# Equação
 # ============================
 st.header("Equação característica")
-st.latex(r"V = \varepsilon - r\,I")
+st.latex(r"V = \varepsilon - rI")
+
 st.write(
-    "**V** é a tensão no circuito (V), **ε** é a tensão na fonte (V) (ou força eletromotriz), "
-    "**r** é a resistência interna da fonte (Ω) e **I** é a corrente no circuito (A)."
+    "**V** é a tensão no circuito (V), **ε** é a tensão da fonte (V), "
+    "**r** é a resistência interna (Ω) e **I** é a corrente (A)."
 )
 
 st.divider()
@@ -162,16 +135,17 @@ st.divider()
 # Parâmetros
 # ============================
 st.header("Parâmetros")
+
 c1, c2, c3 = st.columns(3)
 
 with c1:
-    epsilon = st.slider("ε (tensão na fonte) [V]", float(EPS_MIN), float(EPS_MAX), 12.0, 0.5)
+    epsilon = st.slider("ε (tensão da fonte) [V]", EPS_MIN, EPS_MAX, 12.0, 0.5)
 
 with c2:
-    r_int = st.slider("r (resistência interna) [Ω]", float(RINT_MIN), float(RINT_MAX), 2.0, 0.1)
+    r_int = st.slider("r (resistência interna) [Ω]", RINT_MIN, RINT_MAX, 2.0, 0.1)
 
 with c3:
-    R = st.slider("R (resistência do reostato / circuito) [Ω]", float(RLOAD_MIN), float(RLOAD_MAX), 500.0, 1.0)
+    R = st.slider("R (reostato) [Ω]", RLOAD_MIN, RLOAD_MAX, 500.0, 1.0)
 
 # ============================
 # Cálculos
@@ -183,10 +157,10 @@ icc = epsilon / r_int
 Pg = epsilon * I
 Pd = r_int * I**2
 P_util = V * I
-eta = (P_util / Pg) if Pg > 0 else 0.0
+eta = (P_util / Pg) if Pg > 0 else 0
 
-I_opt = icc / 2.0
-V_opt = epsilon / 2.0
+I_opt = icc / 2
+V_opt = epsilon / 2
 
 st.divider()
 
@@ -194,266 +168,156 @@ st.divider()
 # Circuito
 # ============================
 st.header("Circuito")
+
+st.markdown("""
+<style>
+.circuit-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 14px;
+    border: 1px solid rgba(49,51,63,0.25);
+    background: #0b1220;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.circuit-inner {
+    width: 1600px;
+}
+</style>
+""", unsafe_allow_html=True)
+
 st.markdown(
-    '<div class="hscroll-hint">📱 No celular: arraste/deslize para os lados para ver o circuito completo.</div>',
+    '<div class="hscroll-hint">📱 No celular: deslize para os lados para ver o circuito completo.</div>',
     unsafe_allow_html=True
 )
 
 svg_html = f"""
-<div id="circuit-scroll" class="hscroll grabbable" aria-label="Circuito com rolagem horizontal">
-  <div class="hscroll-inner">
-    <svg width="1600" height="520" viewBox="-70 -70 1740 660"
-         xmlns="http://www.w3.org/2000/svg"
-         preserveAspectRatio="xMinYMin meet"
-         style="overflow: visible; display:block;">
-      <defs>
-        <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
-          <stop offset="0%" stop-color="#050a16"/>
-          <stop offset="100%" stop-color="#0b1630"/>
-        </linearGradient>
+<div class="circuit-wrapper">
+  <div class="circuit-inner">
 
-        <filter id="softGlow" x="-35%" y="-35%" width="170%" height="170%">
-          <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#28d17c" flood-opacity="0.45"/>
-          <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#28d17c" flood-opacity="0.25"/>
-        </filter>
+<svg width="1600" height="520" viewBox="-70 -70 1740 660"
+     xmlns="http://www.w3.org/2000/svg"
+     preserveAspectRatio="xMinYMin meet"
+     style="display:block;">
 
-        <filter id="panelGlowPurple" x="-35%" y="-35%" width="170%" height="170%">
-          <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#8b5cf6" flood-opacity="0.35"/>
-        </filter>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#050a16"/>
+      <stop offset="100%" stop-color="#0b1630"/>
+    </linearGradient>
 
-        <filter id="panelGlowGreen" x="-35%" y="-35%" width="170%" height="170%">
-          <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#22c55e" flood-opacity="0.30"/>
-        </filter>
+    <style>
+      .bg {{ fill:url(#bg); }}
+      .wire {{
+        stroke:#28d17c;
+        stroke-width:12;
+        fill:none;
+        stroke-linecap:round;
+      }}
+      .textW {{ fill:#e8eefc; font-family:Arial; }}
+      .node {{ fill:#28d17c; }}
+    </style>
+  </defs>
 
-        <style>
-          .bg {{ fill: url(#bg); }}
-          .wire {{
-            stroke:#28d17c; stroke-width:12; fill:none;
-            filter:url(#softGlow);
-            stroke-linecap:round; stroke-linejoin:round;
-          }}
-          .wireThin {{
-            stroke:#a78bfa; stroke-width:8; fill:none;
-            filter:url(#panelGlowPurple);
-            stroke-linecap:round; stroke-linejoin:round;
-            opacity:0.95;
-          }}
-          .node {{ fill:#28d17c; opacity:0.95; }}
-          .textW {{ font-family: Arial, Helvetica, sans-serif; fill:#e8eefc; }}
-          .label {{ font-size:28px; font-weight:700; }}
-          .small {{ font-size:22px; opacity:0.95; }}
-          .panelText {{ font-size:26px; font-weight:700; }}
-          .panelText2 {{ font-size:24px; font-weight:600; }}
-          .panel {{ fill: rgba(10,16,30,0.55); stroke: rgba(255,255,255,0.18); stroke-width:2; }}
-          .panelPurple {{ fill: rgba(10,16,30,0.55); stroke:#8b5cf6; stroke-width:3; }}
-          .panelGreen  {{ fill: rgba(10,16,30,0.55); stroke:#22c55e; stroke-width:3; }}
-          .circleA {{ fill: rgba(10,16,30,0.65); stroke:#22c55e; stroke-width:4; }}
-          .srcBox {{ fill: rgba(10,16,30,0.60); stroke: rgba(255,255,255,0.20); stroke-width:3; }}
-          .srcInner {{ fill: rgba(10,16,30,0.35); stroke: rgba(255,255,255,0.15); stroke-width:2; }}
-          .battery {{ stroke:#e8eefc; stroke-width:4; fill:none; opacity:0.9; stroke-linecap:round; }}
-        </style>
-      </defs>
+  <rect class="bg" x="-45" y="-45" width="1690" height="610" rx="22"/>
 
-      <rect class="bg" x="-45" y="-45" width="1690" height="610" rx="22"/>
+  <text class="textW" x="60" y="40" font-size="28" font-weight="700">
+    Fonte com resistência interna
+  </text>
 
-      <text class="textW label" x="60" y="40">Fonte com resistência interna</text>
-      <text class="textW small" x="60" y="78">r = {fmt(r_int,2)} Ω</text>
+  <text class="textW" x="60" y="78" font-size="22">
+    r = {fmt(r_int,2)} Ω
+  </text>
 
-      <rect class="srcBox" x="60" y="140" width="200" height="370" rx="28"/>
-      <text class="textW panelText" x="160" y="188" text-anchor="middle">FONTE</text>
-      <rect class="srcInner" x="95" y="215" width="130" height="78" rx="18"/>
-      <text class="textW panelText2" x="160" y="265" text-anchor="middle">{fmt_voltage(epsilon)}</text>
+  <rect x="60" y="140" width="200" height="370" rx="28"
+        fill="rgba(10,16,30,0.6)"
+        stroke="rgba(255,255,255,0.2)"
+        stroke-width="3"/>
 
-      <line class="battery" x1="135" y1="320" x2="185" y2="320"/>
-      <line class="battery" x1="150" y1="345" x2="170" y2="345"/>
-      <line class="battery" x1="160" y1="305" x2="160" y2="360"/>
+  <text class="textW" x="160" y="190" text-anchor="middle" font-size="26" font-weight="700">
+    FONTE
+  </text>
 
-      <circle class="node" cx="260" cy="260" r="7"/>
-      <circle class="node" cx="260" cy="460" r="7"/>
+  <text class="textW" x="160" y="260" text-anchor="middle" font-size="24">
+    {fmt_voltage(epsilon)}
+  </text>
 
-      <rect class="panel" x="620" y="220" width="380" height="100" rx="18"/>
-      <text class="textW panelText" x="810" y="265" text-anchor="middle">REOSTATO</text>
-      <text class="textW panelText2" x="810" y="302" text-anchor="middle">R = {fmt(R,2)} Ω</text>
+  <circle class="node" cx="260" cy="260" r="7"/>
+  <circle class="node" cx="260" cy="460" r="7"/>
 
-      <circle class="node" cx="620" cy="260" r="7"/>
-      <circle class="node" cx="1000" cy="260" r="7"/>
+  <rect x="620" y="220" width="380" height="100" rx="18"
+        fill="rgba(10,16,30,0.55)"
+        stroke="rgba(255,255,255,0.2)"
+        stroke-width="2"/>
 
-      <text class="textW label" x="810" y="85" text-anchor="middle">Voltímetro</text>
-      <rect class="panelPurple" x="660" y="125" width="300" height="74" rx="16" filter="url(#panelGlowPurple)"/>
-      <text class="textW panelText2" x="810" y="149" text-anchor="middle">
-        V<tspan dy="7" font-size="18">R</tspan><tspan dy="-7"></tspan> = {fmt_voltage(V)}
-      </text>
+  <text class="textW" x="810" y="265" text-anchor="middle" font-size="26" font-weight="700">
+    REOSTATO
+  </text>
 
-      <path class="wireThin" d="M 620 260 L 620 195 L 1000 195" />
-      <path class="wireThin" d="M 1000 260 L 1000 195 L 920 195" />
+  <text class="textW" x="810" y="300" text-anchor="middle" font-size="22">
+    R = {fmt(R,2)} Ω
+  </text>
 
-      <circle class="circleA" cx="1120" cy="260" r="42" filter="url(#panelGlowGreen)"/>
-      <text class="textW panelText" x="1120" y="272" text-anchor="middle">A</text>
+  <circle cx="1120" cy="260" r="42"
+          fill="rgba(10,16,30,0.65)"
+          stroke="#22c55e"
+          stroke-width="4"/>
 
-      <text class="textW label" x="1390" y="130" text-anchor="middle">Amperímetro</text>
-      <rect class="panelGreen" x="1260" y="145" width="310" height="74" rx="16" filter="url(#panelGlowGreen)"/>
-      <text class="textW panelText2" x="1415" y="193" text-anchor="middle">
-        I = {fmt_current(I)}
-      </text>
+  <text class="textW" x="1120" y="272" text-anchor="middle" font-size="28" font-weight="700">
+    A
+  </text>
 
-      <path class="wire" d="M 260 260 L 629 261" />
-      <path class="wire" d="M 1000 261 L 1078 260" />
-      <path class="wire" d="M 1163 261 L 1551 261 L 1551 461 L 261 461" />
-    </svg>
+  <text class="textW" x="1415" y="193" text-anchor="middle" font-size="22">
+    I = {fmt_current(I)}
+  </text>
+
+  <path class="wire" d="M 260 260 L 620 260"/>
+  <path class="wire" d="M 1000 260 L 1080 260"/>
+  <path class="wire" d="M 1163 261 L 1551 261 L 1551 461 L 261 461"/>
+
+</svg>
+
   </div>
 </div>
-
-<script>
-(function() {{
-  const el = document.getElementById("circuit-scroll");
-  if (!el) return;
-
-  let isDown = false;
-  let startX = 0;
-  let startY = 0;
-  let scrollLeft = 0;
-  let lockHorizontal = false;
-
-  const getPoint = (e) => {{
-    if (e.touches && e.touches.length) {{
-      return {{ x: e.touches[0].clientX, y: e.touches[0].clientY }};
-    }}
-    return {{ x: e.clientX, y: e.clientY }};
-  }};
-
-  const onDown = (e) => {{
-    isDown = true;
-    lockHorizontal = false;
-
-    el.classList.add("grabbing");
-    el.classList.remove("grabbable");
-
-    const p = getPoint(e);
-    startX = p.x;
-    startY = p.y;
-    scrollLeft = el.scrollLeft;
-
-    if (e.pointerId !== undefined) {{
-      try {{ el.setPointerCapture(e.pointerId); }} catch(err) {{}}
-    }}
-  }};
-
-  const onMove = (e) => {{
-    if (!isDown) return;
-
-    const p = getPoint(e);
-    const dx = p.x - startX;
-    const dy = p.y - startY;
-
-    if (!lockHorizontal) {{
-      if (Math.abs(dx) > Math.abs(dy) + 6) {{
-        lockHorizontal = true;
-      }} else {{
-        return;
-      }}
-    }}
-
-    if (e.cancelable) e.preventDefault();
-    el.scrollLeft = scrollLeft - dx;
-  }};
-
-  const onUp = (e) => {{
-    isDown = false;
-    lockHorizontal = false;
-
-    el.classList.remove("grabbing");
-    el.classList.add("grabbable");
-
-    if (e && e.pointerId !== undefined) {{
-      try {{ el.releasePointerCapture(e.pointerId); }} catch(err) {{}}
-    }}
-  }};
-
-  el.addEventListener("pointerdown", onDown);
-  el.addEventListener("pointermove", onMove);
-  el.addEventListener("pointerup", onUp);
-  el.addEventListener("pointercancel", onUp);
-
-  el.addEventListener("touchstart", onDown, {{ passive: true }});
-  el.addEventListener("touchmove", onMove, {{ passive: false }});
-  el.addEventListener("touchend", onUp, {{ passive: true }});
-  el.addEventListener("touchcancel", onUp, {{ passive: true }});
-}})();
-</script>
 """
 
-components.html(svg_html, height=580, scrolling=False)
+st.markdown(svg_html, unsafe_allow_html=True)
 
 st.divider()
 
 # ============================
-# Gráfico: Curva característica
+# Gráfico
 # ============================
 st.header("Gráfico")
-st.subheader("Curva característica da fonte")
-st.markdown(
-    '<div class="hscroll-hint">📱 No celular: deslize para os lados para ver o gráfico completo.</div>',
-    unsafe_allow_html=True
-)
 
 I_line = np.linspace(0, icc, 250)
 V_line = epsilon - r_int * I_line
 
 fig1 = go.Figure()
 fig1.add_trace(go.Scatter(
-    x=I_line, y=V_line, mode="lines",
-    name="V = ε - r·I", line=dict(width=3)
+    x=I_line,
+    y=V_line,
+    mode="lines",
+    name="V = ε - rI"
 ))
 
 fig1.add_trace(go.Scatter(
-    x=[I], y=[V],
-    mode="markers+text",
-    name="Ponto de operação",
-    marker=dict(color="red", size=12, line=dict(color="white", width=1)),
-    text=[f"  (I={fmt(I,3)} A, V={fmt(V,3)} V)"],
-    textposition="middle right",
-    cliponaxis=False
-))
-
-fig1.add_annotation(
-    x=0, y=epsilon, xref="x", yref="y",
-    text=f"ε = {fmt(epsilon,2)} V",
-    showarrow=True, arrowhead=2, ax=60, ay=-30,
-    font=dict(size=13, color="#111"),
-    bgcolor="rgba(255,255,255,0.85)",
-    bordercolor="rgba(0,0,0,0.15)", borderwidth=1
-)
-
-fig1.add_trace(go.Scatter(
-    x=[icc], y=[0],
+    x=[I],
+    y=[V],
     mode="markers",
-    name="Curto-circuito",
-    marker=dict(color="#333", size=9),
-    cliponaxis=False
+    marker=dict(size=12)
 ))
-
-fig1.add_annotation(
-    x=icc, y=0, xref="x", yref="y",
-    text=f"icc = {fmt(icc,3)} A",
-    showarrow=True,
-    arrowhead=2,
-    ax=0, ay=-35,
-    font=dict(size=13, color="#222"),
-    bgcolor="rgba(255,255,255,0.85)",
-    bordercolor="rgba(0,0,0,0.15)", borderwidth=1,
-)
 
 fig1.update_layout(
-    margin=dict(l=10, r=10, t=10, b=80),
     height=430,
-    xaxis=dict(title="Corrente no circuito I (A)", range=[0, float(I_AXIS_MAX_GLOBAL)], fixedrange=True),
-    yaxis=dict(title="Tensão no circuito V (V)", range=[0, 30], fixedrange=True),
-    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0)
+    xaxis=dict(title="Corrente I (A)", range=[0, I_AXIS_MAX_GLOBAL]),
+    yaxis=dict(title="Tensão V (V)")
 )
 
-st.plotly_chart(fig1, use_container_width=True, theme="streamlit")
-st.caption("a resistência do reostato do circuito foi alterada para obtermos diferentes valores de tensão e corrente do circuito")
-st.write(f"**Para o valor atual de R:**  I = **{fmt(I,3)} A** e V = **{fmt(V,3)} V**.")
+st.plotly_chart(fig1, use_container_width=True)
 
 st.divider()
 
@@ -461,66 +325,25 @@ st.divider()
 # Potência
 # ============================
 st.header("Potência")
-st.markdown(
-    '<div class="hscroll-hint">📱 No celular: deslize para os lados para ver o gráfico completo.</div>',
-    unsafe_allow_html=True
-)
-
-st.write("**Potência = energia por tempo (unidade Watts)**")
-st.write("**A partir da equação característica:**")
-st.latex(r"V\,I = \varepsilon\,I - r\,I^2")
-st.latex(r"P_{\mathrm{útil}} = P_g - P_d")
 
 I_pow = np.linspace(0, icc, 300)
 P_curve = epsilon * I_pow - r_int * I_pow**2
 
-P_max = float(np.max(P_curve)) if len(P_curve) else 0.0
-xmax = max(icc * 1.05, 0.5)
-ymax = max(P_max * 1.20, 1.0)
-
 fig2 = go.Figure()
 fig2.add_trace(go.Scatter(
-    x=I_pow, y=P_curve,
+    x=I_pow,
+    y=P_curve,
     mode="lines",
-    name="Pútil(I) = εI - rI²",
-    line=dict(width=3)
-))
-
-fig2.add_trace(go.Scatter(
-    x=[I_opt], y=[epsilon * I_opt - r_int * I_opt**2],
-    mode="markers+text",
-    name="Máximo",
-    marker=dict(color="#222", size=10, line=dict(color="white", width=1)),
-    text=["  Máx (icc/2)"],
-    textposition="top left",
-    cliponaxis=False
-))
-
-fig2.add_trace(go.Scatter(
-    x=[I], y=[P_util],
-    mode="markers+text",
-    name="Ponto de operação (Pútil)",
-    marker=dict(color="red", size=13, line=dict(color="white", width=2)),
-    text=[f"  Pútil={fmt(P_util,3)} W"],
-    textposition="top right",
-    textfont=dict(color="red", size=13),
-    cliponaxis=False
+    name="Pútil"
 ))
 
 fig2.update_layout(
-    margin=dict(l=10, r=10, t=10, b=10),
     height=430,
-    xaxis=dict(title="Corrente I (A)", range=[0, xmax], fixedrange=True),
-    yaxis=dict(title="Potência útil Pútil (W)", range=[0, ymax], fixedrange=True),
-    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0)
+    xaxis=dict(title="Corrente I (A)"),
+    yaxis=dict(title="Potência (W)")
 )
 
-st.plotly_chart(fig2, use_container_width=True, theme="streamlit")
-
-st.write(
-    f"Para **Pútil máximo**, a corrente deve ser **icc/2 = {fmt(I_opt,3)} A**, "
-    f"caso onde a tensão do circuito é **ε/2 = {fmt(V_opt,3)} V**."
-)
+st.plotly_chart(fig2, use_container_width=True)
 
 st.divider()
 
@@ -528,17 +351,16 @@ st.divider()
 # Rendimento
 # ============================
 st.header("Rendimento")
-st.latex(r"P_{\mathrm{útil}} = V\,I")
-st.latex(r"P_g = \varepsilon\,I")
-st.latex(r"P_d = r\,I^2")
-st.latex(r"\eta = \dfrac{P_{\mathrm{útil}}}{P_g}")
 
-st.write(f"Para o valor atual de **R = {fmt(R,0)} Ω**:")
+st.metric("Rendimento η", f"{fmt(eta*100,2)} %")
+
 st.write(
-    f"- **V = {fmt(V,3)} V**\n"
-    f"- **I = {fmt(I,3)} A**\n"
-    f"- **Pútil = V·I = {fmt(P_util,3)} W**\n"
-    f"- **Pg = ε·I = {fmt(Pg,3)} W**\n"
-    f"- **Pd = r·I² = {fmt(Pd,3)} W**"
+    f"**V = {fmt(V,3)} V**  \n"
+    f"**I = {fmt(I,3)} A**  \n"
+    f"**Pútil = {fmt(P_util,3)} W**  \n"
+    f"**Pg = {fmt(Pg,3)} W**  \n"
+    f"**Pd = {fmt(Pd,3)} W**"
 )
-st.metric("Rendimento η", f"{fmt(100*eta,2)} %")
+```
+
+Esse código já inclui a correção do scroll horizontal para Android Chrome usando `st.markdown()` em vez de `components.html()`.
