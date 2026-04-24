@@ -2,7 +2,6 @@ import os
 import base64
 import numpy as np
 import streamlit as st
-import streamlit.components.v1 as components
 import plotly.graph_objects as go
 
 # ============================
@@ -15,10 +14,7 @@ st.set_page_config(
 )
 
 # ============================
-# CSS (mobile-friendly + drag-to-scroll)
-# - Logo: evita corte no topo
-# - Plotly em mobile: container com scroll horizontal (swipe)
-# - Circuito: swipe + "arrastar com o dedo" consistente no mobile
+# CSS (mobile-friendly + scroll horizontal real no mobile)
 # ============================
 st.markdown("""
 <style>
@@ -49,10 +45,10 @@ st.markdown("""
 
 /* ============================
    Container com scroll horizontal (mobile swipe)
-   + Melhorias de gesto no mobile
+   - solução robusta: scroll nativo no DOM do Streamlit (sem iframe)
    ============================ */
 .hscroll {
-  overflow-x: auto;
+  overflow-x: scroll;              /* força scroll */
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   border-radius: 14px;
@@ -60,18 +56,14 @@ st.markdown("""
   background: #0b1220;
   padding: 16px;
   max-width: 100%;
-
-  /* ✅ IMPORTANTE: ajuda o browser a entender que o gesto é horizontal */
-  touch-action: pan-x;
-  /* ✅ Evita que o gesto horizontal “escape” para a página/navegador */
-  overscroll-behavior-x: contain;
+  touch-action: pan-x;             /* prioriza gesto horizontal */
+  overscroll-behavior-x: contain;  /* evita "voltar" do navegador em alguns casos */
 }
 
-/* força scroll em telas pequenas e evita encolher demais */
-.hscroll svg {
-  display: block;
+/* garante que exista "largura maior" para rolar */
+.hscroll .wide {
+  display: inline-block;
   min-width: 1600px;
-  height: auto;
 }
 
 /* Dica */
@@ -80,10 +72,6 @@ st.markdown("""
   opacity: 0.75;
   margin: 0.1rem 0 0.6rem 0;
 }
-
-/* Cursor para drag (desktop) */
-.hscroll.grabbable { cursor: grab; }
-.hscroll.grabbing  { cursor: grabbing; }
 
 /* ============================
    Plotly: permitir swipe horizontal no celular
@@ -129,7 +117,8 @@ RINT_MIN, RINT_MAX = 0.5, 10.0
 RLOAD_MIN, RLOAD_MAX = 0.1, 500.0
 
 # ============================
-# Curva característica (x até 45 A)
+# Curva característica
+# eixo x até 45 A
 # ============================
 I_AXIS_MAX_GLOBAL = 45.0
 
@@ -205,243 +194,134 @@ st.divider()
 
 # ============================
 # Circuito
-# ✅ MELHORIA: "arrastar com o dedo" horizontal no mobile, com trava de direção
+# ✅ ALTERAÇÃO PRINCIPAL:
+# - em vez de components.html (iframe), usa st.markdown direto (DOM),
+#   o swipe horizontal funciona muito melhor em celulares.
 # ============================
 st.header("Circuito")
 st.markdown(
-    '<div class="hscroll-hint">📱 No celular: deslize/arraste para os lados para ver o circuito completo.</div>',
+    '<div class="hscroll-hint">📱 No celular: deslize para os lados para ver o circuito completo.</div>',
     unsafe_allow_html=True
 )
 
-svg_html = f"""
-<div id="circuit-scroll" class="hscroll grabbable" aria-label="Circuito com rolagem horizontal">
-<svg width="1600" height="520" viewBox="-70 -70 1740 660"
-     xmlns="http://www.w3.org/2000/svg"
-     preserveAspectRatio="xMinYMin meet"
-     style="overflow: visible;">
+svg_markup = f"""
+<div class="hscroll" aria-label="Circuito com rolagem horizontal">
+  <div class="wide">
+    <svg width="1600" height="520" viewBox="-70 -70 1740 660"
+         xmlns="http://www.w3.org/2000/svg"
+         preserveAspectRatio="xMinYMin meet"
+         style="overflow: visible;">
+      <defs>
+        <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0%" stop-color="#050a16"/>
+          <stop offset="100%" stop-color="#0b1630"/>
+        </linearGradient>
 
-  <defs>
-    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0%" stop-color="#050a16"/>
-      <stop offset="100%" stop-color="#0b1630"/>
-    </linearGradient>
+        <filter id="softGlow" x="-35%" y="-35%" width="170%" height="170%">
+          <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#28d17c" flood-opacity="0.45"/>
+          <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#28d17c" flood-opacity="0.25"/>
+        </filter>
 
-    <filter id="softGlow" x="-35%" y="-35%" width="170%" height="170%">
-      <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#28d17c" flood-opacity="0.45"/>
-      <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#28d17c" flood-opacity="0.25"/>
-    </filter>
+        <filter id="panelGlowPurple" x="-35%" y="-35%" width="170%" height="170%">
+          <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#8b5cf6" flood-opacity="0.35"/>
+        </filter>
 
-    <filter id="panelGlowPurple" x="-35%" y="-35%" width="170%" height="170%">
-      <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#8b5cf6" flood-opacity="0.35"/>
-    </filter>
+        <filter id="panelGlowGreen" x="-35%" y="-35%" width="170%" height="170%">
+          <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#22c55e" flood-opacity="0.30"/>
+        </filter>
 
-    <filter id="panelGlowGreen" x="-35%" y="-35%" width="170%" height="170%">
-      <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#22c55e" flood-opacity="0.30"/>
-    </filter>
+        <style>
+          .bg {{ fill: url(#bg); }}
+          .wire {{
+            stroke:#28d17c; stroke-width:12; fill:none;
+            filter:url(#softGlow);
+            stroke-linecap:round; stroke-linejoin:round;
+          }}
+          .wireThin {{
+            stroke:#a78bfa; stroke-width:8; fill:none;
+            filter:url(#panelGlowPurple);
+            stroke-linecap:round; stroke-linejoin:round;
+            opacity:0.95;
+          }}
+          .node {{ fill:#28d17c; opacity:0.95; }}
+          .textW {{ font-family: Arial, Helvetica, sans-serif; fill:#e8eefc; }}
+          .label {{ font-size:28px; font-weight:700; }}
+          .small {{ font-size:22px; opacity:0.95; }}
+          .panelText {{ font-size:26px; font-weight:700; }}
+          .panelText2 {{ font-size:24px; font-weight:600; }}
+          .panel {{ fill: rgba(10,16,30,0.55); stroke: rgba(255,255,255,0.18); stroke-width:2; }}
+          .panelPurple {{ fill: rgba(10,16,30,0.55); stroke:#8b5cf6; stroke-width:3; }}
+          .panelGreen  {{ fill: rgba(10,16,30,0.55); stroke:#22c55e; stroke-width:3; }}
+          .circleA {{ fill: rgba(10,16,30,0.65); stroke:#22c55e; stroke-width:4; }}
+          .srcBox {{ fill: rgba(10,16,30,0.60); stroke: rgba(255,255,255,0.20); stroke-width:3; }}
+          .srcInner {{ fill: rgba(10,16,30,0.35); stroke: rgba(255,255,255,0.15); stroke-width:2; }}
+          .battery {{ stroke:#e8eefc; stroke-width:4; fill:none; opacity:0.9; stroke-linecap:round; }}
+        </style>
+      </defs>
 
-    <style>
-      .bg {{ fill: url(#bg); }}
-      .wire {{
-        stroke:#28d17c; stroke-width:12; fill:none;
-        filter:url(#softGlow);
-        stroke-linecap:round; stroke-linejoin:round;
-      }}
-      .wireThin {{
-        stroke:#a78bfa; stroke-width:8; fill:none;
-        filter:url(#panelGlowPurple);
-        stroke-linecap:round; stroke-linejoin:round;
-        opacity:0.95;
-      }}
-      .node {{ fill:#28d17c; opacity:0.95; }}
-      .textW {{ font-family: Arial, Helvetica, sans-serif; fill:#e8eefc; }}
-      .label {{ font-size:28px; font-weight:700; }}
-      .small {{ font-size:22px; opacity:0.95; }}
-      .panelText {{ font-size:26px; font-weight:700; }}
-      .panelText2 {{ font-size:24px; font-weight:600; }}
-      .panel {{ fill: rgba(10,16,30,0.55); stroke: rgba(255,255,255,0.18); stroke-width:2; }}
-      .panelPurple {{ fill: rgba(10,16,30,0.55); stroke:#8b5cf6; stroke-width:3; }}
-      .panelGreen  {{ fill: rgba(10,16,30,0.55); stroke:#22c55e; stroke-width:3; }}
-      .circleA {{ fill: rgba(10,16,30,0.65); stroke:#22c55e; stroke-width:4; }}
-      .srcBox {{ fill: rgba(10,16,30,0.60); stroke: rgba(255,255,255,0.20); stroke-width:3; }}
-      .srcInner {{ fill: rgba(10,16,30,0.35); stroke: rgba(255,255,255,0.15); stroke-width:2; }}
-      .battery {{ stroke:#e8eefc; stroke-width:4; fill:none; opacity:0.9; stroke-linecap:round; }}
-    </style>
-  </defs>
+      <!-- Fundo -->
+      <rect class="bg" x="-45" y="-45" width="1690" height="610" rx="22"/>
 
-  <!-- Fundo -->
-  <rect class="bg" x="-45" y="-45" width="1690" height="610" rx="22"/>
+      <!-- Cabeçalho -->
+      <text class="textW label" x="60" y="40">Fonte com resistência interna</text>
+      <text class="textW small" x="60" y="78">r = {fmt(r_int,2)} Ω</text>
 
-  <!-- Cabeçalho -->
-  <text class="textW label" x="60" y="40">Fonte com resistência interna</text>
-  <text class="textW small" x="60" y="78">r = {fmt(r_int,2)} Ω</text>
+      <!-- BLOCO FONTE -->
+      <rect class="srcBox" x="60" y="140" width="200" height="370" rx="28"/>
+      <text class="textW panelText" x="160" y="188" text-anchor="middle">FONTE</text>
+      <rect class="srcInner" x="95" y="215" width="130" height="78" rx="18"/>
+      <text class="textW panelText2" x="160" y="265" text-anchor="middle" fill="#5eead4">{fmt_voltage(epsilon)}</text>
 
-  <!-- BLOCO FONTE -->
-  <rect class="srcBox" x="60" y="140" width="200" height="370" rx="28"/>
-  <text class="textW panelText" x="160" y="188" text-anchor="middle">FONTE</text>
-  <rect class="srcInner" x="95" y="215" width="130" height="78" rx="18"/>
-  <text class="textW panelText2" x="160" y="265" text-anchor="middle" fill="#5eead4">{fmt_voltage(epsilon)}</text>
+      <!-- Símbolo de bateria -->
+      <line class="battery" x1="135" y1="320" x2="185" y2="320"/>
+      <line class="battery" x1="150" y1="345" x2="170" y2="345"/>
+      <line class="battery" x1="160" y1="305" x2="160" y2="360"/>
 
-  <!-- Símbolo de bateria -->
-  <line class="battery" x1="135" y1="320" x2="185" y2="320"/>
-  <line class="battery" x1="150" y1="345" x2="170" y2="345"/>
-  <line class="battery" x1="160" y1="305" x2="160" y2="360"/>
+      <!-- Terminais da fonte -->
+      <circle class="node" cx="260" cy="260" r="7"/>
+      <circle class="node" cx="260" cy="460" r="7"/>
 
-  <!-- Terminais da fonte -->
-  <circle class="node" cx="260" cy="260" r="7"/>
-  <circle class="node" cx="260" cy="460" r="7"/>
+      <!-- REOSTATO -->
+      <rect class="panel" x="620" y="220" width="380" height="100" rx="18"/>
+      <text class="textW panelText" x="810" y="265" text-anchor="middle">REOSTATO</text>
+      <text class="textW panelText2" x="810" y="302" text-anchor="middle">R = {fmt(R,2)} Ω</text>
 
-  <!-- REOSTATO -->
-  <rect class="panel" x="620" y="220" width="380" height="100" rx="18"/>
-  <text class="textW panelText" x="810" y="265" text-anchor="middle">REOSTATO</text>
-  <text class="textW panelText2" x="810" y="302" text-anchor="middle">R = {fmt(R,2)} Ω</text>
+      <!-- Nós do reostato -->
+      <circle class="node" cx="620" cy="260" r="7"/>
+      <circle class="node" cx="1000" cy="260" r="7"/>
 
-  <!-- Nós do reostato -->
-  <circle class="node" cx="620" cy="260" r="7"/>
-  <circle class="node" cx="1000" cy="260" r="7"/>
+      <!-- VOLTÍMETRO -->
+      <text class="textW label" x="810" y="85" text-anchor="middle">Voltímetro</text>
+      <rect class="panelPurple" x="660" y="125" width="300" height="74" rx="16" filter="url(#panelGlowPurple)"/>
+      <text class="textW panelText2" x="810" y="149" text-anchor="middle">
+        V<tspan dy="7" font-size="18">R</tspan><tspan dy="-7"></tspan> = {fmt_voltage(V)}
+      </text>
 
-  <!-- VOLTÍMETRO -->
-  <text class="textW label" x="810" y="85" text-anchor="middle">Voltímetro</text>
-  <rect class="panelPurple" x="660" y="125" width="300" height="74" rx="16" filter="url(#panelGlowPurple)"/>
-  <text class="textW panelText2" x="810" y="149" text-anchor="middle">
-    V<tspan dy="7" font-size="18">R</tspan><tspan dy="-7"></tspan> = {fmt_voltage(V)}
-  </text>
+      <!-- Fios do voltímetro -->
+      <path class="wireThin" d="M 620 260 L 620 195 L 1000 195" />
+      <path class="wireThin" d="M 1000 260 L 1000 195 L 920 195" />
 
-  <!-- Fios do voltímetro -->
-  <path class="wireThin" d="M 620 260 L 620 195 L 1000 195" />
-  <path class="wireThin" d="M 1000 260 L 1000 195 L 920 195" />
+      <!-- AMPERÍMETRO -->
+      <circle class="circleA" cx="1120" cy="260" r="42" filter="url(#panelGlowGreen)"/>
+      <text class="textW panelText" x="1120" y="272" text-anchor="middle">A</text>
 
-  <!-- AMPERÍMETRO -->
-  <circle class="circleA" cx="1120" cy="260" r="42" filter="url(#panelGlowGreen)"/>
-  <text class="textW panelText" x="1120" y="272" text-anchor="middle">A</text>
+      <!-- Painel do amperímetro -->
+      <text class="textW label" x="1390" y="130" text-anchor="middle">Amperímetro</text>
+      <rect class="panelGreen" x="1260" y="145" width="310" height="74" rx="16" filter="url(#panelGlowGreen)"/>
+      <text class="textW panelText2" x="1415" y="193" text-anchor="middle" fill="#86efac">
+        I = {fmt_current(I)}
+      </text>
 
-  <!-- Painel do amperímetro -->
-  <text class="textW label" x="1390" y="130" text-anchor="middle">Amperímetro</text>
-  <rect class="panelGreen" x="1260" y="145" width="310" height="74" rx="16" filter="url(#panelGlowGreen)"/>
-  <text class="textW panelText2" x="1415" y="193" text-anchor="middle" fill="#86efac">
-    I = {fmt_current(I)}
-  </text>
+      <!-- FIOS PRINCIPAIS -->
+      <path class="wire" d="M 260 260 L 629 261" />
+      <path class="wire" d="M 1000 261 L 1078 260" />
+      <path class="wire" d="M 1163 261 L 1551 261 L 1551 461 L 261 461" />
 
-  <!-- FIOS PRINCIPAIS -->
-  <path class="wire" d="M 260 260 L 629 261" />
-  <path class="wire" d="M 1000 261 L 1078 260" />
-  <path class="wire" d="M 1163 261 L 1551 261 L 1551 461 L 261 461" />
-
-</svg>
+    </svg>
+  </div>
 </div>
-
-<script>
-(function() {{
-  const el = document.getElementById("circuit-scroll");
-  if (!el) return;
-
-  // --- Estado do gesto
-  let dragging = false;
-  let locked = false;     // se já travou a direção
-  let lockIsHorizontal = false;
-  let startX = 0, startY = 0;
-  let scrollLeft = 0;
-
-  const LOCK_THRESHOLD = 6; // px (sensibilidade para travar direção)
-
-  function setDraggingUI(on) {{
-    if (on) {{
-      el.classList.add("grabbing");
-      el.classList.remove("grabbable");
-    }} else {{
-      el.classList.remove("grabbing");
-      el.classList.add("grabbable");
-    }}
-  }}
-
-  function begin(x, y) {{
-    dragging = true;
-    locked = false;
-    lockIsHorizontal = false;
-    startX = x;
-    startY = y;
-    scrollLeft = el.scrollLeft;
-    setDraggingUI(true);
-  }}
-
-  function update(x, y, evt) {{
-    if (!dragging) return;
-
-    const dx = x - startX;
-    const dy = y - startY;
-
-    // trava a direção após um pequeno limiar (preserva scroll vertical da página)
-    if (!locked) {{
-      if (Math.abs(dx) < LOCK_THRESHOLD && Math.abs(dy) < LOCK_THRESHOLD) {{
-        return; // ainda não decidiu
-      }}
-      locked = true;
-      lockIsHorizontal = Math.abs(dx) >= Math.abs(dy);
-    }}
-
-    if (lockIsHorizontal) {{
-      // ✅ gesto horizontal: arrasta o conteúdo
-      el.scrollLeft = scrollLeft - dx;
-
-      // Se for touch, previne o "puxar" da página enquanto arrasta na horizontal
-      if (evt && evt.cancelable) {{
-        evt.preventDefault();
-      }}
-    }}
-    // se for vertical, não faz nada e deixa a página rolar normalmente
-  }}
-
-  function end() {{
-    dragging = false;
-    locked = false;
-    lockIsHorizontal = false;
-    setDraggingUI(false);
-  }}
-
-  // --- Ponteiros (funciona bem em Android/desktop e vários browsers)
-  const onPointerDown = (e) => {{
-    // somente botão primário (ou toque)
-    if (e.pointerType === "mouse" && e.button !== 0) return;
-    begin(e.clientX, e.clientY);
-    try {{ el.setPointerCapture(e.pointerId); }} catch(err) {{}}
-  }};
-
-  const onPointerMove = (e) => {{
-    update(e.clientX, e.clientY, e);
-  }};
-
-  const onPointerUp = (e) => {{
-    end();
-    try {{ el.releasePointerCapture(e.pointerId); }} catch(err) {{}}
-  }};
-
-  el.addEventListener("pointerdown", onPointerDown, {{ passive: true }});
-  el.addEventListener("pointermove", onPointerMove, {{ passive: false }});
-  el.addEventListener("pointerup", onPointerUp, {{ passive: true }});
-  el.addEventListener("pointercancel", onPointerUp, {{ passive: true }});
-
-  // --- Fallback para iOS antigo / casos onde pointer events falham
-  const onTouchStart = (e) => {{
-    if (!e.touches || e.touches.length !== 1) return;
-    const t = e.touches[0];
-    begin(t.clientX, t.clientY);
-  }};
-
-  const onTouchMove = (e) => {{
-    if (!e.touches || e.touches.length !== 1) return;
-    const t = e.touches[0];
-    update(t.clientX, t.clientY, e);
-  }};
-
-  const onTouchEnd = () => end();
-
-  el.addEventListener("touchstart", onTouchStart, {{ passive: true }});
-  el.addEventListener("touchmove", onTouchMove, {{ passive: false }});
-  el.addEventListener("touchend", onTouchEnd, {{ passive: true }});
-  el.addEventListener("touchcancel", onTouchEnd, {{ passive: true }});
-}})();
-</script>
 """
-components.html(svg_html, height=580, scrolling=False)
+st.markdown(svg_markup, unsafe_allow_html=True)
 
 st.divider()
 
