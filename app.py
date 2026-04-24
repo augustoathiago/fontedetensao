@@ -33,14 +33,14 @@ st.markdown("""
   border-radius: 14px;
   border: 1px solid rgba(49,51,63,0.25);
   background: #0b1220;
-  padding: 16px;          /* folga para não “cortar” glow */
+  padding: 16px;
   max-width: 100%;
 }
 
 /* força scroll em telas pequenas e evita encolher demais */
 .hscroll svg {
   display: block;
-  min-width: 1600px;      /* swipe horizontal no mobile */
+  min-width: 1600px;
   height: auto;
 }
 
@@ -149,9 +149,7 @@ st.divider()
 
 # ============================
 # Circuito (melhorado)
-# - adiciona os 2 fios pedidos (fonte->reostato e reostato->amperímetro)
-# - mantém retorno amperímetro->fonte
-# - sobe corrente e tensão para não sobrepor fio
+# - AGORA liga os pontos exatamente: fonte->reostato e reostato->amperímetro
 # ============================
 st.header("Circuito")
 st.markdown(
@@ -241,7 +239,7 @@ svg_html = f"""
   <circle class="node" cx="260" cy="260" r="7"/>
   <circle class="node" cx="260" cy="460" r="7"/>
 
-  <!-- Texto da resistência interna (sem zigzag) -->
+  <!-- Texto da resistência interna -->
   <text class="textW small" x="360" y="210">Resistência interna</text>
 
   <!-- REOSTATO -->
@@ -266,11 +264,11 @@ svg_html = f"""
   <path class="wireThin" d="M 620 260 L 620 195 L 700 195" />
   <path class="wireThin" d="M 1000 260 L 1000 195 L 920 195" />
 
-  <!-- AMPERÍMETRO (símbolo) -->
+  <!-- AMPERÍMETRO (círculo) -->
   <circle class="circleA" cx="1120" cy="260" r="42" filter="url(#panelGlowGreen)"/>
   <text class="textW panelText" x="1120" y="272" text-anchor="middle">A</text>
 
-  <!-- Painel do amperímetro (bem mais para cima para não encostar no fio) -->
+  <!-- Painel do amperímetro (para cima, sem cruzar fio) -->
   <text class="textW label" x="1390" y="130" text-anchor="middle">Amperímetro</text>
   <rect class="panelGreen" x="1260" y="145" width="310" height="74" rx="16" filter="url(#panelGlowGreen)"/>
   <text class="textW panelText2" x="1415" y="193" text-anchor="middle" fill="#86efac">
@@ -278,20 +276,19 @@ svg_html = f"""
   </text>
 
   <!-- ============================
-       FIOS PRINCIPAIS (conforme pedido)
+       FIOS PRINCIPAIS (CORRIGIDOS)
        ============================ -->
 
-  <!-- (1) Fio: ponto da FONTE -> ponto à ESQUERDA do REOSTATO -->
-  <!-- pequenas folgas (268 e 612) para não “tampar” os pontos verdes -->
-  <path class="wire" d="M 268 260 L 612 260" />
+  <!-- 1) LIGAR FONTE AO REOSTATO (ponto verde -> ponto verde, SEM GAP) -->
+  <path class="wire" d="M 260 260 L 620 260" />
 
-  <!-- (2) Fio: ponto à DIREITA do REOSTATO -> CÍRCULO do AMPERÍMETRO (reta horizontal) -->
-  <!-- termina na borda esquerda do círculo (cx - r = 1120 - 42 = 1078) -->
-  <path class="wire" d="M 1008 260 L 1078 260" />
+  <!-- 2) LIGAR REOSTATO AO AMPERÍMETRO (reta horizontal até o círculo) -->
+  <!-- círculo: cx=1120, r=42 => borda esquerda x=1078 -->
+  <path class="wire" d="M 1000 260 L 1078 260" />
 
-  <!-- (3) Retorno: sai do lado direito do amperímetro e volta até o terminal inferior da fonte -->
-  <!-- sai na borda direita do círculo (cx + r = 1162) -->
-  <path class="wire" d="M 1162 260 L 1550 260 L 1550 460 L 268 460" />
+  <!-- 3) Retorno: do amperímetro para a fonte (fechando o circuito) -->
+  <!-- borda direita do círculo: 1120+42 = 1162 -->
+  <path class="wire" d="M 1162 260 L 1550 260 L 1550 460 L 260 460" />
 
 </svg>
 </div>
