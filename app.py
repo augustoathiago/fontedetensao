@@ -286,7 +286,7 @@ svg_html = f"""
 
   <!-- 3) Retorno: do amperímetro para a fonte (fechando o circuito) -->
   <!-- borda direita do círculo: 1120+42 = 1162 -->
-  <path class="wire" d="M 1162 261 L 1550 261 L 1550 461 L 260 461" />
+  <path class="wire" d="M 1163 261 L 1551 261 L 1551 461 L 261 461" />
 
 </svg>
 </div>
