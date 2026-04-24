@@ -213,6 +213,67 @@ st.markdown(
 )
 
 svg_html = f"""
+<style>
+  /* ✅ IMPORTANTE:
+     components.html roda em um iframe, então o CSS do app NÃO entra aqui.
+     Este bloco garante a barra/rolagem horizontal dentro da seção Circuito.
+  */
+  html, body {{
+    margin: 0;
+    padding: 0;
+    background: transparent;
+  }}
+
+  .hscroll {{
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 14px;
+    border: 1px solid rgba(49,51,63,0.25);
+    background: #0b1220;
+    padding: 16px;
+    max-width: 100%;
+    box-sizing: border-box;
+
+    /* mantém espaço do scrollbar quando possível (desktop/alguns browsers) */
+    scrollbar-gutter: stable both-edges;
+  }}
+
+  /* barra mais "visível" (Chrome/Edge/Safari) */
+  .hscroll::-webkit-scrollbar {{
+    height: 12px;
+  }}
+  .hscroll::-webkit-scrollbar-track {{
+    background: rgba(255,255,255,0.10);
+    border-radius: 999px;
+  }}
+  .hscroll::-webkit-scrollbar-thumb {{
+    background: rgba(255,255,255,0.35);
+    border-radius: 999px;
+  }}
+  .hscroll::-webkit-scrollbar-thumb:hover {{
+    background: rgba(255,255,255,0.50);
+  }}
+
+  /* Firefox */
+  .hscroll {{
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.40) rgba(255,255,255,0.12);
+  }}
+
+  /* garante que o SVG seja maior que a viewport no mobile,
+     forçando a rolagem horizontal */
+  .hscroll svg {{
+    display: block;
+    min-width: 1600px;
+    height: auto;
+  }}
+
+  /* Cursor para drag (desktop) */
+  .hscroll.grabbable {{ cursor: grab; }}
+  .hscroll.grabbing  {{ cursor: grabbing; }}
+</style>
+
 <div id="circuit-scroll" class="hscroll grabbable" aria-label="Circuito com rolagem horizontal">
 <svg width="1600" height="520" viewBox="-70 -70 1740 660"
      xmlns="http://www.w3.org/2000/svg"
