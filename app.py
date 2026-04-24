@@ -358,6 +358,3 @@ st.write(
     f"**Pg = {fmt(Pg,3)} W**  \n"
     f"**Pd = {fmt(Pd,3)} W**"
 )
-```
-
-Esse código já inclui a correção do scroll horizontal para Android Chrome usando `st.markdown()` em vez de `components.html()`.
