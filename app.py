@@ -1,6 +1,3 @@
-# Código completo do aplicativo inteiro com scroll horizontal funcional no Android Chrome
-
-```python
 import os
 import base64
 import numpy as np
