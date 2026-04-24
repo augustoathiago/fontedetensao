@@ -1,3 +1,5 @@
+import os
+import base64
 import numpy as np
 import streamlit as st
 import streamlit.components.v1 as components
@@ -14,6 +16,8 @@ st.set_page_config(
 
 # ============================
 # CSS (mobile-friendly + drag-to-scroll)
+# - (2) logo: evita corte no topo
+# - (3) plotly em mobile: container com scroll horizontal (swipe)
 # ============================
 st.markdown("""
 <style>
@@ -25,7 +29,26 @@ st.markdown("""
   h3 { font-size: 1.02rem !important; }
 }
 
-/* Container com scroll horizontal (mobile swipe) */
+/* ============================
+   (2) Logo: não cortar no topo
+   ============================ */
+.logo-wrap{
+  width: 100%;
+  padding-top: 10px;   /* dá “respiro” para não parecer cortado */
+  padding-bottom: 4px;
+  overflow: visible;
+}
+.logo-wrap img{
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+  object-position: top center;
+}
+
+/* ============================
+   Container com scroll horizontal (mobile swipe)
+   ============================ */
 .hscroll {
   overflow-x: auto;
   overflow-y: hidden;
@@ -54,6 +77,22 @@ st.markdown("""
 /* Cursor para drag (desktop) */
 .hscroll.grabbable { cursor: grab; }
 .hscroll.grabbing  { cursor: grabbing; }
+
+/* ============================
+   (3) Plotly: permitir swipe horizontal no celular
+   (sem alterar o gráfico; apenas adiciona scroll no container)
+   ============================ */
+@media (max-width: 900px) {
+  div[data-testid="stPlotlyChart"] > div {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  div[data-testid="stPlotlyChart"] .js-plotly-plot,
+  div[data-testid="stPlotlyChart"] .plot-container.plotly {
+    min-width: 920px;  /* largura “extra” para exigir scroll no mobile */
+  }
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -85,7 +124,7 @@ RLOAD_MIN, RLOAD_MAX = 0.1, 500.0
 
 # ============================
 # Curva característica
-# Melhoria (3): eixo x até 45 A
+# eixo x até 45 A
 # ============================
 I_AXIS_MAX_GLOBAL = 45.0
 
@@ -95,9 +134,20 @@ I_AXIS_MAX_GLOBAL = 45.0
 col_logo, col_title = st.columns([1, 3], vertical_alignment="center")
 
 with col_logo:
-    try:
-        st.image("logo_maua.png", use_container_width=True)
-    except Exception:
+    # (2) Renderização do logo via HTML para evitar corte no topo
+    logo_path = "logo_maua.png"
+    if os.path.exists(logo_path):
+        try:
+            with open(logo_path, "rb") as f:
+                b64 = base64.b64encode(f.read()).decode("utf-8")
+            st.markdown(
+                f'<div class="logo-wrap"><img src="data:image/png;base64,{b64}" alt="logo_maua"></div>',
+                unsafe_allow_html=True
+            )
+        except Exception:
+            # fallback
+            st.image(logo_path, use_container_width=True)
+    else:
         st.warning("Arquivo logo_maua.png não encontrado no diretório do app.")
 
 with col_title:
@@ -152,8 +202,9 @@ st.divider()
 
 # ============================
 # Circuito
-# Melhoria (1): R do reostato com 2 casas decimais
-# CORREÇÃO: chaves do JS escapadas ({{ e }}) dentro da f-string
+# R do reostato com 2 casas decimais
+# JS com chaves escapadas ({{ e }}) dentro da f-string
+# (3) já está com swipe horizontal (hscroll)
 # ============================
 st.header("Circuito")
 st.markdown(
@@ -315,17 +366,21 @@ svg_html = f"""
 }})();
 </script>
 """
-
 components.html(svg_html, height=580, scrolling=False)
 
 st.divider()
 
 # ============================
 # Gráfico: Curva característica
-# Melhoria (3): eixo até 45 A
+# (1) Corrigir sobreposição: mover anotação do icc para dentro do gráfico
+# (3) CSS já permite swipe horizontal no mobile
 # ============================
 st.header("Gráfico")
 st.subheader("Curva característica da fonte")
+st.markdown(
+    '<div class="hscroll-hint">📱 No celular: deslize para os lados para ver o gráfico completo.</div>',
+    unsafe_allow_html=True
+)
 
 I_line = np.linspace(0, icc, 250)
 V_line = epsilon - r_int * I_line
@@ -363,14 +418,17 @@ fig1.add_trace(go.Scatter(
     cliponaxis=False
 ))
 
+# (1) Antes: yref="paper", y=-0.18 (sobrepunha o título do eixo x)
+# Agora: anotação dentro da área do gráfico, próxima do ponto (icc, 0)
 fig1.add_annotation(
-    x=icc, xref="x",
-    yref="paper", y=-0.18,
+    x=icc, y=0, xref="x", yref="y",
     text=f"icc = {fmt(icc,3)} A",
-    showarrow=False,
+    showarrow=True,
+    arrowhead=2,
+    ax=0, ay=-35,  # seta apontando para o ponto, texto acima
     font=dict(size=13, color="#222"),
     bgcolor="rgba(255,255,255,0.85)",
-    bordercolor="rgba(0,0,0,0.15)", borderwidth=1
+    bordercolor="rgba(0,0,0,0.15)", borderwidth=1,
 )
 
 fig1.update_layout(
@@ -389,9 +447,14 @@ st.divider()
 
 # ============================
 # Potência
-# Melhoria (2): ponto Pútil sempre por cima e sem sumir perto dos eixos
+# (3) CSS já permite swipe horizontal no mobile
 # ============================
 st.header("Potência")
+st.markdown(
+    '<div class="hscroll-hint">📱 No celular: deslize para os lados para ver o gráfico completo.</div>',
+    unsafe_allow_html=True
+)
+
 st.write("**Potência = energia por tempo (unidade Watts)**")
 st.write("**A partir da equação característica:**")
 st.latex(r"V\,I = \varepsilon\,I - r\,I^2")
@@ -469,3 +532,4 @@ st.write(
     f"- **Pd = r·I² = {fmt(Pd,3)} W**"
 )
 st.metric("Rendimento η", f"{fmt(100*eta,2)} %")
+``
