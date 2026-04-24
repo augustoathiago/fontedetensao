@@ -148,9 +148,10 @@ V_opt = epsilon / 2.0
 st.divider()
 
 # ============================
-# Circuito (ajustado)
-# - fios corretos entre componentes
-# - corrente e tensão mais para cima (sem sobrepor fio)
+# Circuito (melhorado)
+# - adiciona os 2 fios pedidos (fonte->reostato e reostato->amperímetro)
+# - mantém retorno amperímetro->fonte
+# - sobe corrente e tensão para não sobrepor fio
 # ============================
 st.header("Circuito")
 st.markdown(
@@ -254,43 +255,43 @@ svg_html = f"""
   <circle class="node" cx="620" cy="260" r="7"/>
   <circle class="node" cx="1000" cy="260" r="7"/>
 
-  <!-- VOLTÍMETRO (subido um pouco) -->
-  <text class="textW label" x="810" y="95" text-anchor="middle">Voltímetro</text>
-  <rect class="panelPurple" x="660" y="110" width="300" height="74" rx="16" filter="url(#panelGlowPurple)"/>
-  <text class="textW panelText2" x="810" y="159" text-anchor="middle">
+  <!-- VOLTÍMETRO (mais para cima) -->
+  <text class="textW label" x="810" y="85" text-anchor="middle">Voltímetro</text>
+  <rect class="panelPurple" x="660" y="100" width="300" height="74" rx="16" filter="url(#panelGlowPurple)"/>
+  <text class="textW panelText2" x="810" y="149" text-anchor="middle">
     V<tspan dy="7" font-size="18">R</tspan><tspan dy="-7"></tspan> = {fmt_voltage(V)}
   </text>
 
-  <!-- Fios do voltímetro (em paralelo com a carga) -->
-  <path class="wireThin" d="M 620 260 L 620 205 L 700 205" />
-  <path class="wireThin" d="M 1000 260 L 1000 205 L 920 205" />
+  <!-- Fios do voltímetro -->
+  <path class="wireThin" d="M 620 260 L 620 195 L 700 195" />
+  <path class="wireThin" d="M 1000 260 L 1000 195 L 920 195" />
 
-  <!-- AMPERÍMETRO (símbolo + painel) -->
+  <!-- AMPERÍMETRO (símbolo) -->
   <circle class="circleA" cx="1120" cy="260" r="42" filter="url(#panelGlowGreen)"/>
   <text class="textW panelText" x="1120" y="272" text-anchor="middle">A</text>
 
-  <!-- Painel do amperímetro (subido para não sobrepor fio) -->
-  <text class="textW label" x="1390" y="155" text-anchor="middle">Amperímetro</text>
-  <rect class="panelGreen" x="1260" y="170" width="310" height="74" rx="16" filter="url(#panelGlowGreen)"/>
-  <text class="textW panelText2" x="1415" y="218" text-anchor="middle" fill="#86efac">
+  <!-- Painel do amperímetro (bem mais para cima para não encostar no fio) -->
+  <text class="textW label" x="1390" y="130" text-anchor="middle">Amperímetro</text>
+  <rect class="panelGreen" x="1260" y="145" width="310" height="74" rx="16" filter="url(#panelGlowGreen)"/>
+  <text class="textW panelText2" x="1415" y="193" text-anchor="middle" fill="#86efac">
     I = {fmt_current(I)}
   </text>
 
   <!-- ============================
-       FIOS PRINCIPAIS (3 ligações)
-       1) Fonte -> Reostato
-       2) Reostato -> Amperímetro
-       3) Amperímetro -> Retorno -> Fonte
+       FIOS PRINCIPAIS (conforme pedido)
        ============================ -->
 
-  <!-- 1) Fonte -> Reostato -->
-  <path class="wire" d="M 260 260 L 620 260" />
+  <!-- (1) Fio: ponto da FONTE -> ponto à ESQUERDA do REOSTATO -->
+  <!-- pequenas folgas (268 e 612) para não “tampar” os pontos verdes -->
+  <path class="wire" d="M 268 260 L 612 260" />
 
-  <!-- 2) Reostato -> Amperímetro -->
-  <path class="wire" d="M 1000 260 L 1078 260" />
+  <!-- (2) Fio: ponto à DIREITA do REOSTATO -> CÍRCULO do AMPERÍMETRO (reta horizontal) -->
+  <!-- termina na borda esquerda do círculo (cx - r = 1120 - 42 = 1078) -->
+  <path class="wire" d="M 1008 260 L 1078 260" />
 
-  <!-- 3) Amperímetro -> Retorno -> Fonte (igual ao “L” da sua imagem) -->
-  <path class="wire" d="M 1162 260 L 1550 260 L 1550 460 L 260 460" />
+  <!-- (3) Retorno: sai do lado direito do amperímetro e volta até o terminal inferior da fonte -->
+  <!-- sai na borda direita do círculo (cx + r = 1162) -->
+  <path class="wire" d="M 1162 260 L 1550 260 L 1550 460 L 268 460" />
 
 </svg>
 </div>
