@@ -519,6 +519,7 @@ st.markdown(
 st.write("**Potência = energia por tempo (unidade Watts)**")
 st.write("**A partir da equação característica:**")
 st.latex(r"V\,I = \varepsilon\,I - r\,I^2")
+st.latex(r"P_{\mathrm{útil}} = \varepsilon\,I - r\,I^2")
 st.latex(r"P_{\mathrm{útil}} = P_g - P_d")
 
 I_pow = np.linspace(0, icc, 300)
@@ -569,7 +570,7 @@ fig2.update_layout(
 st.plotly_chart(fig2, use_container_width=True, theme="streamlit")
 
 st.write(
-    f"Para **Pútil máximo**, a corrente deve ser **icc/2 = {fmt(I_opt,3)} A**, "
+    f"Para **Pútil máxima**, a corrente deve ser **icc/2 = {fmt(I_opt,3)} A**, "
     f"caso onde a tensão do circuito é **ε/2 = {fmt(V_opt,3)} V**."
 )
 
