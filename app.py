@@ -587,7 +587,7 @@ st.latex(r"\eta = \dfrac{P_{\mathrm{útil}}}{P_g}")
 
 st.write(f"Para o valor atual de **R = {fmt(R,0)} Ω**:")
 st.write(
-    f"- **V = {fmt(V,3)} V**\n"
+    f"- **Tensão no circuito V = {fmt(V,3)} V**\n"
     f"- **I = {fmt(I,3)} A**\n"
     f"- **Pútil = V·I = {fmt(P_util,3)} W**\n"
     f"- **Pg = ε·I = {fmt(Pg,3)} W**\n"
