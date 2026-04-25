@@ -588,9 +588,9 @@ st.latex(r"\eta = \dfrac{P_{\mathrm{útil}}}{P_g}")
 st.write(f"Para o valor atual de **R = {fmt(R,0)} Ω**:")
 st.write(
     f"- **Tensão no circuito V = {fmt(V,3)} V**\n"
-    f"- **I = {fmt(I,3)} A**\n"
-    f"- **Pútil = V·I = {fmt(P_util,3)} W**\n"
-    f"- **Pg = ε·I = {fmt(Pg,3)} W**\n"
-    f"- **Pd = r·I² = {fmt(Pd,3)} W**"
+    f"- **Corrente no circuito I = {fmt(I,3)} A**\n"
+    f"- **Potência útil Pútil = V·I = {fmt(P_util,3)} W**\n"
+    f"- **Potência gerada Pg = ε·I = {fmt(Pg,3)} W**\n"
+    f"- **Potência dissipada Pd = r·I² = {fmt(Pd,3)} W**"
 )
 st.metric("Rendimento η", f"{fmt(100*eta,2)} %")
